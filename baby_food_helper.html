@@ -39,7 +39,10 @@
         .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); position: relative; }
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         .card-title { font-size: 16px; font-weight: 600; color: var(--dark); }
+        
+        .badge-group { display: flex; gap: 6px; }
         .badge { background: var(--primary-light); color: var(--primary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
+        .badge-cat { background: var(--secondary-light); color: var(--secondary); font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: 600; }
         
         .vaccine-banner { background: #FFF9E6; border: 1px solid #FFE0B2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #D97706; display: flex; justify-content: space-between; align-items: center; }
         
@@ -107,7 +110,7 @@
     <!-- 2. 食谱灵感库页 -->
     <main id="recipeView" class="view">
         <div class="search-box">
-            🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：胡萝卜、猪肝）...">
+            🔍 <input type="text" id="searchInput" placeholder="搜索食谱或食材（如：胡萝卜、猪肝）...">
         </div>
         <div id="recipeList"></div>
     </main>
@@ -170,6 +173,15 @@
                 <div class="form-group">
                     <label>食谱名称</label>
                     <input type="text" id="recipeName" placeholder="例如：胡萝卜牛肉泥" required>
+                </div>
+                <div class="form-group">
+                    <label>食谱分类</label>
+                    <select id="recipeCategory">
+                        <option value="主食">🥣 主食</option>
+                        <option value="肉">🥩 肉类</option>
+                        <option value="蔬菜">🥦 蔬菜</option>
+                        <option value="水果">🍎 水果</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>食材与用量（逗号分隔）</label>
@@ -263,8 +275,8 @@
         document.addEventListener("DOMContentLoaded", function() {
             var babyBirth = localStorage.getItem('baby_birth') || '';
             var recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
-                { id: 1, name: "胡萝卜猪肝泥", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6个月" },
-                { id: 2, name: "西兰花三文鱼粥", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8个月" }
+                { id: 1, name: "胡萝卜猪肝泥", category: "肉", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6个月" },
+                { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g, 胚芽米 30g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8个月" }
             ];
             var datePlans = JSON.parse(localStorage.getItem('baby_date_plans')) || {};
             var vaccineNotes = JSON.parse(localStorage.getItem('baby_vaccines')) || {};
@@ -288,11 +300,11 @@
                 return y + '-' + m + '-' + d;
             }
 
-            // 📊 导出适应飞书多维表格的 CSV
+            // 📊 导出适应飞书多维表格的 CSV（增加了分类列）
             document.getElementById('btnExportCSV').addEventListener('click', function() {
                 var csvRows = [];
                 // CSV 表头
-                csvRows.push(['记录类型', '日期/阶段', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
+                csvRows.push(['记录类型', '日期/阶段', '餐次/分类', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
 
                 // 1. 导出排餐计划
                 Object.keys(datePlans).forEach(function(dStr) {
@@ -306,7 +318,7 @@
                                 '排餐计划',
                                 dStr,
                                 meal,
-                                recipe.name,
+                                recipe.name + (recipe.category ? ' [' + recipe.category + ']' : ''),
                                 recipe.ingredients,
                                 vNote ? ('疫苗/特殊事项: ' + vNote) : ''
                             ].map(escapeCSV).join(','));
@@ -319,7 +331,7 @@
                     csvRows.push([
                         '食谱库',
                         r.age,
-                        '-',
+                        r.category || '未分类',
                         r.name,
                         r.ingredients,
                         r.steps
@@ -331,7 +343,7 @@
                     csvRows.push([
                         '月龄小结',
                         s.stage,
-                        s.foods || '无',
+                        '新解锁: ' + (s.foods || '无'),
                         '月龄小结与心得',
                         '-',
                         s.notes
@@ -496,10 +508,11 @@
                     section.appendChild(titleDiv);
 
                     if (recipe) {
+                        var catBadge = recipe.category ? '<span class="badge-cat">' + recipe.category + '</span>' : '';
                         var card = document.createElement('div');
                         card.className = 'card';
                         card.style.marginBottom = '0';
-                        card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div><span class="badge">' + recipe.age + '</span></div>' +
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div><div class="badge-group">' + catBadge + '<span class="badge">' + recipe.age + '</span></div></div>' +
                                          '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(function(i){ return '<span class="tag">' + i.trim() + '</span>'; }).join('') + '</div>' +
                                          '<div class="steps-text">' + recipe.steps + '</div>';
 
@@ -541,7 +554,7 @@
                 document.getElementById('planDateSelect').value = dateStr;
                 document.getElementById('planMealSelect').value = meal;
                 var recipeSel = document.getElementById('planRecipeSelect');
-                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + r.age + ')</option>'; }).join('');
+                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + (r.category ? '[' + r.category + '] ' : '') + r.name + ' (' + r.age + ')</option>'; }).join('');
                 document.getElementById('planModal').classList.add('active');
             }
 
@@ -556,17 +569,22 @@
                 renderDailyMeal();
             });
 
-            // 食谱库
+            // 食谱库展示（含分类标签）
             function renderRecipes() {
                 var query = document.getElementById('searchInput').value.toLowerCase();
                 var container = document.getElementById('recipeList');
                 container.innerHTML = '';
 
                 recipes.forEach(function(r) {
-                    if (r.name.toLowerCase().includes(query) || r.ingredients.toLowerCase().includes(query)) {
+                    var matchCat = (r.category || '').toLowerCase().includes(query);
+                    var matchName = r.name.toLowerCase().includes(query);
+                    var matchIng = r.ingredients.toLowerCase().includes(query);
+
+                    if (matchCat || matchName || matchIng) {
+                        var catBadge = r.category ? '<span class="badge-cat">' + r.category + '</span>' : '';
                         var card = document.createElement('div');
                         card.className = 'card';
-                        card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div><span class="badge">' + r.age + '</span></div>' +
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div><div class="badge-group">' + catBadge + '<span class="badge">' + r.age + '</span></div></div>' +
                                          '<div class="ingredients-tag">' + r.ingredients.split(',').map(function(i){ return '<span class="tag">🥦 ' + i.trim() + '</span>'; }).join('') + '</div>' +
                                          '<div class="steps-text">' + r.steps + '</div>';
 
@@ -607,6 +625,7 @@
                 var newRecipe = {
                     id: Date.now(),
                     name: document.getElementById('recipeName').value,
+                    category: document.getElementById('recipeCategory').value,
                     ingredients: document.getElementById('recipeIngredients').value,
                     steps: document.getElementById('recipeSteps').value,
                     age: document.getElementById('recipeAge').value
