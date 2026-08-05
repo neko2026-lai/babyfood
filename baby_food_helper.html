@@ -43,7 +43,6 @@
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         .card-title { font-size: 16px; font-weight: 600; color: var(--dark); }
         .badge-group { display: flex; gap: 4px; }
-        .badge { background: var(--primary-light); color: var(--primary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
         .badge-cat { background: var(--secondary-light); color: var(--secondary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
 
         .vaccine-banner { background: #FFF9E6; border: 1px solid #FFE0B2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #D97706; display: flex; justify-content: space-between; align-items: center; }
@@ -96,10 +95,12 @@
         <div class="backup-bar">
             <span style="font-size:12px; color:#666; font-weight:600;">📊 飞书多维表格：</span>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="btn btn-sm btn-feishu" id="btnExportCSV">📊 导出 CSV (飞书多维表格)</button>
+                <button class="btn btn-sm btn-feishu" id="btnExportCSV">📊 导出 CSV</button>
+                <button class="btn btn-sm btn-feishu" id="btnImportCSV">📥 导入 CSV</button>
                 <button class="btn btn-sm btn-outline" id="btnExportData">📤 导出 JSON 备份</button>
                 <button class="btn btn-sm btn-outline" id="btnImportData">📥 导入 JSON</button>
                 <input type="file" id="fileInput" accept=".json" style="display:none;">
+                <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
             </div>
         </div>
 
@@ -206,17 +207,6 @@
                     <label>制作步骤</label>
                     <textarea id="recipeSteps" placeholder="1. 蒸熟&#10;2. 打泥"></textarea>
                 </div>
-                <div class="form-group">
-                    <label>适合月龄</label>
-                    <select id="recipeAge">
-                        <option value="6个月">6个月</option>
-                        <option value="7个月">7个月</option>
-                        <option value="8个月">8个月</option>
-                        <option value="9个月">9个月</option>
-                        <option value="10-12个月">10-12个月</option>
-                        <option value="1岁+">1岁+</option>
-                    </select>
-                </div>
                 <div style="display:flex; gap:10px;">
                     <button type="button" class="btn btn-secondary" id="btnCancelRecipe">取消</button>
                     <button type="submit" class="btn">保存食谱</button>
@@ -290,8 +280,8 @@
         document.addEventListener("DOMContentLoaded", function() {
             var babyBirth = localStorage.getItem('baby_birth') || '';
             var recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
-                { id: 1, name: "胡萝卜猪肝泥", category: "肉", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6个月" },
-                { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8个月" }
+                { id: 1, name: "胡萝卜猪肝泥", category: "肉", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥" },
+                { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入" }
             ];
             var datePlans = JSON.parse(localStorage.getItem('baby_date_plans')) || {};
             var vaccineNotes = JSON.parse(localStorage.getItem('baby_vaccines')) || {};
@@ -318,7 +308,7 @@
             // 📊 导出适应飞书多维表格的 CSV
             document.getElementById('btnExportCSV').addEventListener('click', function() {
                 var csvRows = [];
-                csvRows.push(['记录类型', '日期/阶段/分类', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
+                csvRows.push(['记录类型', '日期/分类', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
 
                 // 1. 导出排餐计划
                 Object.keys(datePlans).forEach(function(dStr) {
@@ -344,7 +334,7 @@
                 recipes.forEach(function(r) {
                     csvRows.push([
                         '食谱库',
-                        r.age + ' | ' + (r.category || '未分类'),
+                        r.category || '未分类',
                         '-',
                         r.name,
                         r.ingredients,
@@ -376,6 +366,112 @@
                 if (str === null || str === undefined) return '""';
                 var s = String(str).replace(/"/g, '""');
                 return '"' + s + '"';
+            }
+
+            // 📥 导入飞书多维表格 CSV 功能
+            document.getElementById('btnImportCSV').addEventListener('click', function() { document.getElementById('csvFileInput').click(); });
+            document.getElementById('csvFileInput').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        var text = evt.target.result;
+                        parseCSVAndImport(text);
+                    } catch (err) { alert("⚠️ CSV解析失败，请检查文件格式！"); }
+                };
+                reader.readAsText(file, 'utf-8');
+            });
+
+            function parseCSVAndImport(csvText) {
+                var lines = parseCSVLines(csvText);
+                if (lines.length <= 1) { alert("⚠️ 文件内容为空或格式有误！"); return; }
+                
+                var newRecipes = [];
+                var newDatePlans = {};
+                var newVaccines = {};
+                var newSummaries = [];
+
+                for (var i = 1; i < lines.length; i++) {
+                    var row = lines[i];
+                    if (row.length < 6) continue;
+                    var type = row[0].trim();
+                    var col1 = row[1].trim(); // 日期/分类
+                    var col2 = row[2].trim(); // 餐次/新食材
+                    var col3 = row[3].trim(); // 食谱/内容
+                    var col4 = row[4].trim(); // 食材用量
+                    var col5 = row[5].trim(); // 备注/步骤
+
+                    if (type === '食谱库') {
+                        newRecipes.push({
+                            id: Date.now() + Math.floor(Math.random() * 10000),
+                            name: col3,
+                            category: col1 === '-' ? '主食' : col1,
+                            ingredients: col4,
+                            steps: col5
+                        });
+                    } else if (type === '月龄小结') {
+                        newSummaries.push({
+                            stage: col1,
+                            foods: col2 === '无' ? '' : col2,
+                            notes: col5
+                        });
+                    } else if (type === '排餐计划') {
+                        var dStr = col1;
+                        var meal = col2;
+                        var recipeName = col3;
+                        var existingRecipe = newRecipes.find(function(r){ return r.name === recipeName; }) || recipes.find(function(r){ return r.name === recipeName; });
+                        var rId = existingRecipe ? existingRecipe.id : null;
+                        if (!rId) {
+                            rId = Date.now() + Math.floor(Math.random() * 10000);
+                            newRecipes.push({ id: rId, name: recipeName, category: '主食', ingredients: col4, steps: '' });
+                        }
+                        if (!newDatePlans[dStr]) newDatePlans[dStr] = {};
+                        newDatePlans[dStr][meal] = rId;
+
+                        if (col5 && col5.indexOf('疫苗/特殊事项: ') !== -1) {
+                            newVaccines[dStr] = col5.replace('疫苗/特殊事项: ', '');
+                        }
+                    }
+                }
+
+                if (newRecipes.length > 0) recipes = newRecipes;
+                if (Object.keys(newDatePlans).length > 0) datePlans = newDatePlans;
+                if (Object.keys(newVaccines).length > 0) vaccineNotes = newVaccines;
+                if (newSummaries.length > 0) summaries = newSummaries;
+
+                saveData();
+                renderWeekPills();
+                renderRecipes();
+                renderSummaries();
+                alert("🎉 飞书 CSV 数据导入成功！");
+            }
+
+            // 简易 CSV 行与单元格解析，处理双引号与换行
+            function parseCSVLines(text) {
+                var result = [];
+                var row = [];
+                var cur = '';
+                var inQuotes = false;
+                for (var i = 0; i < text.length; i++) {
+                    var c = text[i];
+                    var next = text[i+1];
+                    if (c === '"') {
+                        if (inQuotes && next === '"') { cur += '"'; i++; }
+                        else { inQuotes = !inQuotes; }
+                    } else if (c === ',' && !inQuotes) {
+                        row.push(cur); cur = '';
+                    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                        if (c === '\r' && next === '\n') { i++; }
+                        row.push(cur); cur = '';
+                        if (row.length > 1 || row[0] !== '') result.push(row);
+                        row = [];
+                    } else {
+                        cur += c;
+                    }
+                }
+                if (cur || row.length > 0) { row.push(cur); result.push(row); }
+                return result;
             }
 
             // 导出/导入 JSON 格式
@@ -528,7 +624,7 @@
                         card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div>' +
                                          '<div class="badge-group">' +
                                          (recipe.category ? '<span class="badge-cat">' + recipe.category + '</span>' : '') +
-                                         '<span class="badge">' + recipe.age + '</span></div></div>' +
+                                         '</div></div>' +
                                          '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(function(i){ return '<span class="tag">' + i.trim() + '</span>'; }).join('') + '</div>' +
                                          '<div class="steps-text">' + recipe.steps + '</div>';
 
@@ -570,7 +666,7 @@
                 document.getElementById('planDateSelect').value = dateStr;
                 document.getElementById('planMealSelect').value = meal;
                 var recipeSel = document.getElementById('planRecipeSelect');
-                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + (r.category || '未分类') + ' - ' + r.age + ')</option>'; }).join('');
+                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + (r.category || '未分类') + ')</option>'; }).join('');
                 document.getElementById('planModal').classList.add('active');
             }
 
@@ -596,7 +692,6 @@
                     document.getElementById('recipeCategory').value = recipeToEdit.category || '主食';
                     document.getElementById('recipeIngredients').value = recipeToEdit.ingredients;
                     document.getElementById('recipeSteps').value = recipeToEdit.steps;
-                    document.getElementById('recipeAge').value = recipeToEdit.age;
                 } else {
                     document.getElementById('recipeModalTitle').innerText = "📝 新增食谱";
                     document.getElementById('recipeEditId').value = "";
@@ -621,7 +716,7 @@
                         card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div>' +
                                          '<div class="badge-group">' +
                                          (r.category ? '<span class="badge-cat">' + r.category + '</span>' : '') +
-                                         '<span class="badge">' + r.age + '</span></div></div>' +
+                                         '</div></div>' +
                                          '<div class="ingredients-tag">' + r.ingredients.split(',').map(function(i){ return '<span class="tag">🥦 ' + i.trim() + '</span>'; }).join('') + '</div>' +
                                          '<div class="steps-text">' + r.steps + '</div>';
 
@@ -673,8 +768,7 @@
                     name: document.getElementById('recipeName').value,
                     category: document.getElementById('recipeCategory').value,
                     ingredients: document.getElementById('recipeIngredients').value,
-                    steps: document.getElementById('recipeSteps').value,
-                    age: document.getElementById('recipeAge').value
+                    steps: document.getElementById('recipeSteps').value
                 };
 
                 if (editId) {
