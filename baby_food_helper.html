@@ -3,103 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宝宝辅食通 - 食谱与周计划</title>
+    <title>宝宝辅食通</title>
     <style>
         :root {
             --primary: #FF7E67;
             --primary-light: #FFF0ED;
             --secondary: #4ECDC4;
             --secondary-light: #E8F8F5;
-            --accent: #FFE66D;
+            --accent: #FF9F43;
             --dark: #2C3E50;
             --gray-bg: #F8F9FA;
             --card-bg: #FFFFFF;
             --border-radius: 16px;
             --shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--gray-bg); color: var(--dark); padding-bottom: 80px; }
-
-        header { background: #fff; padding: 16px 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; }
-        header h1 { font-size: 20px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
         
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; display: flex; justify-content: space-around; padding: 10px 0 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: none; color: #8E8E93; font-size: 11px; width: 50%; cursor: pointer; }
-        .nav-item.active { color: var(--primary); font-weight: bold; }
-        .nav-item svg { width: 24px; height: 24px; fill: currentColor; }
+        header { background: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .header-top h1 { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .baby-info-bar { background: var(--primary-light); color: var(--primary); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-top: 6px; }
 
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; display: flex; justify-content: space-around; padding: 10px 0 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; border: none; background: none; color: #8E8E93; font-size: 11px; width: 33%; cursor: pointer; }
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        
         .view { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
         .view.active { display: block; }
-
-        .search-box { background: #fff; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; box-shadow: var(--shadow); }
+        
+        .search-box { background: #fff; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; margin-bottom: 16px; box-shadow: var(--shadow); }
         .search-box input { border: none; outline: none; width: 100%; font-size: 15px; }
-
-        .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-        .card-title { font-size: 17px; font-weight: 600; color: var(--dark); }
-        .badge { background: var(--primary-light); color: var(--primary); font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+        
+        .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); position: relative; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .card-title { font-size: 16px; font-weight: 600; color: var(--dark); }
+        .badge { background: var(--primary-light); color: var(--primary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
+        
+        .vaccine-banner { background: #FFF9E6; border: 1px solid #FFE0B2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #D97706; display: flex; justify-content: space-between; align-items: center; }
         
         .ingredients-tag { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-        .tag { background: #F0F2F5; color: #555; font-size: 12px; padding: 4px 10px; border-radius: 8px; }
-        .steps-text { font-size: 14px; color: #666; line-height: 1.5; white-space: pre-line; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
-
-        .btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .btn-secondary { background: var(--secondary-light); color: var(--secondary); }
-        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; width: auto; }
-
-        .week-selector { display: flex; justify-content: space-between; background: #fff; padding: 12px; border-radius: var(--border-radius); margin-bottom: 16px; box-shadow: var(--shadow); }
-        .day-pill { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 12px; cursor: pointer; font-size: 13px; min-width: 44px; }
-        .day-pill.active { background: var(--primary); color: #fff; font-weight: bold; }
+        .tag { background: #F0F2F5; color: #555; font-size: 12px; padding: 3px 8px; border-radius: 6px; }
+        .steps-text { font-size: 13px; color: #666; line-height: 1.5; white-space: pre-line; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
         
-        .meal-section { margin-bottom: 16px; }
-        .meal-title { font-size: 14px; font-weight: 600; color: #888; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 10px 16px; font-size: 14px; font-weight: 600; width: 100%; cursor: pointer; }
+        .btn-secondary { background: var(--secondary-light); color: var(--secondary); }
+        .btn-warning { background: #FFF3C4; color: #D97706; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; width: auto; }
+        
+        .week-selector { display: flex; justify-content: space-between; background: #fff; padding: 10px; border-radius: var(--border-radius); margin-bottom: 12px; box-shadow: var(--shadow); overflow-x: auto; }
+        .day-pill { display: flex; flex-direction: column; align-items: center; padding: 6px 10px; border-radius: 10px; cursor: pointer; font-size: 12px; min-width: 50px; text-align: center; }
+        .day-pill.active { background: var(--primary); color: #fff; font-weight: bold; }
+        .day-pill .date-str { font-size: 10px; opacity: 0.8; margin-top: 2px; }
 
+        .meal-section { margin-bottom: 14px; }
+        .meal-title { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        
         .modal { display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: flex-end; }
         .modal.active { display: flex; }
-        .modal-content { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 24px; }
-
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid #E5E5EA; border-radius: 10px; font-size: 15px; outline: none; }
-        .form-group textarea { height: 90px; resize: none; }
+        .modal-content { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 20px; }
+        
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #E5E5EA; border-radius: 8px; font-size: 14px; outline: none; }
+        .form-group textarea { height: 80px; resize: none; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>👶 宝宝辅食通</h1>
-        <button class="btn btn-sm" onclick="openModal('recipeModal')">+ 记食谱</button>
+        <div class="header-top">
+            <h1>👶 宝宝辅食通</h1>
+            <button class="btn btn-sm" id="btnOpenAddRecipe">+ 记食谱</button>
+        </div>
+        <div class="baby-info-bar" id="btnSetBirth">
+            🎂 宝宝月龄：<span id="babyAgeDisplay">未设置生日（点击设置）</span> ✏️
+        </div>
     </header>
 
+    <!-- 1. 辅食计划页 -->
     <main id="planView" class="view active">
         <div class="week-selector" id="weekPills"></div>
+        
+        <div id="vaccineBannerArea"></div>
+
         <div id="dailyMealContent"></div>
     </main>
 
+    <!-- 2. 食谱灵感库页 -->
     <main id="recipeView" class="view">
         <div class="search-box">
-            🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：西兰花、猪肝）..." oninput="renderRecipes()">
+            🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：胡萝卜、猪肝）...">
         </div>
         <div id="recipeList"></div>
     </main>
 
+    <!-- 3. 月龄小结公共页 -->
+    <main id="summaryView" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2 style="font-size:18px;">📋 各月龄辅食小结</h2>
+            <button class="btn btn-sm" id="btnOpenAddSummary">+ 记小结</button>
+        </div>
+        <div id="summaryList"></div>
+    </main>
+
+    <!-- 底部导航 -->
     <nav class="bottom-nav">
-        <button class="nav-item active" onclick="switchView('planView', this)">
-            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
-            辅食计划
-        </button>
-        <button class="nav-item" onclick="switchView('recipeView', this)">
-            <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H6V4h2v8l2.5-1.5L13 12V4h5v16z"/></svg>
-            食谱灵感库
-        </button>
+        <button class="nav-item active" id="btnNavPlan">📅 辅食计划</button>
+        <button class="nav-item" id="btnNavRecipe">📖 食谱灵感</button>
+        <button class="nav-item" id="btnNavSummary">📋 月龄小结</button>
     </nav>
 
+    <!-- 弹窗：设置生日 -->
+    <div class="modal" id="birthModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:14px;">🎂 设置宝宝出生日期</h3>
+            <div class="form-group">
+                <label>宝宝生日</label>
+                <input type="date" id="babyBirthInput">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="button" class="btn btn-secondary" id="btnCancelBirth">取消</button>
+                <button type="button" class="btn" id="btnSaveBirth">保存生日</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：标记疫苗 -->
+    <div class="modal" id="vaccineModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:14px;">💉 标注疫苗/特殊事项</h3>
+            <div class="form-group">
+                <label>日期</label>
+                <input type="text" id="vaccineDateInput" readonly style="background:#F0F2F5;">
+            </div>
+            <div class="form-group">
+                <label>疫苗名称 / 备注事项</label>
+                <input type="text" id="vaccineNoteInput" placeholder="如：接种五联疫苗、五价轮状">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="button" class="btn btn-secondary" id="btnCancelVaccine">取消</button>
+                <button type="button" class="btn" id="btnSaveVaccine">保存标注</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：新增食谱 -->
     <div class="modal" id="recipeModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:16px;">📝 新增/编辑食谱</h3>
-            <form id="recipeForm" onsubmit="saveRecipe(event)">
-                <input type="hidden" id="recipeId">
+            <h3 style="margin-bottom:14px;">📝 新增食谱</h3>
+            <form id="recipeForm">
                 <div class="form-group">
                     <label>食谱名称</label>
                     <input type="text" id="recipeName" placeholder="例如：胡萝卜牛肉泥" required>
@@ -115,26 +168,62 @@
                 <div class="form-group">
                     <label>适合月龄</label>
                     <select id="recipeAge">
-                        <option value="6-7个月">6-7个月</option>
-                        <option value="8-9个月">8-9个月</option>
+                        <option value="6个月">6个月</option>
+                        <option value="7个月">7个月</option>
+                        <option value="8个月">8个月</option>
+                        <option value="9个月">9个月</option>
                         <option value="10-12个月">10-12个月</option>
                         <option value="1岁+">1岁+</option>
                     </select>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('recipeModal')">取消</button>
+                    <button type="button" class="btn btn-secondary" id="btnCancelRecipe">取消</button>
                     <button type="submit" class="btn">保存食谱</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- 弹窗：月龄小结 -->
+    <div class="modal" id="summaryModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:14px;">📋 记录月龄小结</h3>
+            <form id="summaryForm">
+                <div class="form-group">
+                    <label>选择月龄阶段</label>
+                    <select id="summaryStage">
+                        <option value="6个月小结">6个月小结</option>
+                        <option value="7个月小结">7个月小结</option>
+                        <option value="8个月小结">8个月小结</option>
+                        <option value="9个月小结">9个月小结</option>
+                        <option value="10个月小结">10个月小结</option>
+                        <option value="11个月小结">11个月小结</option>
+                        <option value="12个月小结">12个月小结</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>解锁新食材</label>
+                    <input type="text" id="summaryNewFoods" placeholder="如：西兰花、猪肝、三文鱼">
+                </div>
+                <div class="form-group">
+                    <label>吞咽/进食状况与过敏小结</label>
+                    <textarea id="summaryNotes" placeholder="记录这个月的吞咽表现、排便情况、过敏反应等..."></textarea>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-secondary" id="btnCancelSummary">取消</button>
+                    <button type="submit" class="btn">保存小结</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 弹窗：安排排餐 -->
     <div class="modal" id="planModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:16px;">📅 排入辅食计划</h3>
+            <h3 style="margin-bottom:14px;">📅 排入辅食计划</h3>
             <div class="form-group">
-                <label>选择日期</label>
-                <select id="planDaySelect"></select>
+                <label>选择具体日期</label>
+                <input type="date" id="planDateSelect">
             </div>
             <div class="form-group">
                 <label>选择餐次</label>
@@ -150,203 +239,377 @@
                 <select id="planRecipeSelect"></select>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('planModal')">取消</button>
-                <button type="button" class="btn" onclick="savePlan()">确定安排</button>
+                <button type="button" class="btn btn-secondary" id="btnCancelPlan">取消</button>
+                <button type="button" class="btn" id="btnSavePlan">确定安排</button>
             </div>
         </div>
     </div>
 
     <script>
-        var recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
-            { id: 1, name: "胡萝卜猪肝泥", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6-7个月" },
-            { id: 2, name: "西兰花三文鱼粥", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8-9个月" }
-        ];
+        document.addEventListener("DOMContentLoaded", function() {
+            // 本地数据初始化
+            var babyBirth = localStorage.getItem('baby_birth') || '';
+            var recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
+                { id: 1, name: "胡萝卜猪肝泥", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6个月" },
+                { id: 2, name: "西兰花三文鱼粥", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8个月" }
+            ];
+            var datePlans = JSON.parse(localStorage.getItem('baby_date_plans')) || {};
+            var vaccineNotes = JSON.parse(localStorage.getItem('baby_vaccines')) || {};
+            var summaries = JSON.parse(localStorage.getItem('baby_summaries')) || [];
 
-        var plans = JSON.parse(localStorage.getItem('baby_plans')) || {
-            "周一": { "早餐": 1 },
-            "周二": { "午餐": 2 }
-        };
+            // 当前选中日期（格式 YYYY-MM-DD，默认今天）
+            var todayStr = getFormattedDate(new Date());
+            var currentSelectedDate = todayStr;
 
-        var days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-        var currentSelectedDay = "周一";
-
-        function saveData() {
-            localStorage.setItem('baby_recipes', JSON.stringify(recipes));
-            localStorage.setItem('baby_plans', JSON.stringify(plans));
-        }
-
-        function switchView(viewId, btn) {
-            document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
-            document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
-            document.getElementById(viewId).classList.add('active');
-            btn.classList.add('active');
-        }
-
-        function openModal(id) { document.getElementById(id).classList.add('active'); }
-        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-        function renderWeekPills() {
-            var container = document.getElementById('weekPills');
-            var html = '';
-            for (var i = 0; i < days.length; i++) {
-                var day = days[i];
-                var activeClass = (day === currentSelectedDay) ? 'active' : '';
-                html += '<div class="day-pill ' + activeClass + '" onclick="selectDay(\'' + day + '\')"><span>' + day + '</span></div>';
-            }
-            container.innerHTML = html;
-            renderDailyMeal();
-        }
-
-        function selectDay(day) {
-            currentSelectedDay = day;
-            renderWeekPills();
-        }
-
-        function renderDailyMeal() {
-            var container = document.getElementById('dailyMealContent');
-            var dayPlan = plans[currentSelectedDay] || {};
-            var meals = ["早餐", "午餐", "下午加餐", "晚餐"];
-            var html = '';
-
-            for (var i = 0; i < meals.length; i++) {
-                var meal = meals[i];
-                var recipeId = dayPlan[meal];
-                var recipe = null;
-                for (var j = 0; j < recipes.length; j++) {
-                    if (recipes[j].id === recipeId) { recipe = recipes[j]; break; }
-                }
-
-                html += '<div class="meal-section">';
-                html += '<div class="meal-title"><span>📌 ' + meal + '</span>';
-                html += '<button class="btn btn-sm btn-secondary" onclick="openPlanModal(\'' + currentSelectedDay + '\', \'' + meal + '\')">+ 安排</button></div>';
-
-                if (recipe) {
-                    html += '<div class="card" style="margin-bottom:0;"><div class="card-header"><div class="card-title">' + recipe.name + '</div>';
-                    html += '<span class="badge">' + recipe.age + '</span></div>';
-                    html += '<div class="ingredients-tag">';
-                    var tags = recipe.ingredients.split(',');
-                    for (var k = 0; k < tags.length; k++) {
-                        html += '<span class="tag">' + tags[k].trim() + '</span>';
-                    }
-                    html += '</div><div class="steps-text">' + recipe.steps + '</div>';
-                    html += '<button class="btn btn-sm btn-secondary" style="margin-top:10px; color:#ff4d4f;" onclick="removeMeal(\'' + currentSelectedDay + '\', \'' + meal + '\')">移除此餐</button></div>';
-                } else {
-                    html += '<div style="background:#fff; border: 2px dashed #E5E5EA; border-radius:12px; padding:16px; text-align:center; color:#aaa; font-size:13px;">暂无排餐，点击右上角安排</div>';
-                }
-                html += '</div>';
-            }
-            container.innerHTML = html;
-        }
-
-        function renderRecipes() {
-            var query = document.getElementById('searchInput').value.toLowerCase();
-            var container = document.getElementById('recipeList');
-            var html = '';
-
-            for (var i = 0; i < recipes.length; i++) {
-                var r = recipes[i];
-                if (r.name.toLowerCase().indexOf(query) !== -1 || r.ingredients.toLowerCase().indexOf(query) !== -1) {
-                    html += '<div class="card"><div class="card-header"><div class="card-title">' + r.name + '</div>';
-                    html += '<span class="badge">' + r.age + '</span></div><div class="ingredients-tag">';
-                    var tags = r.ingredients.split(',');
-                    for (var k = 0; k < tags.length; k++) {
-                        html += '<span class="tag">🥦 ' + tags[k].trim() + '</span>';
-                    }
-                    html += '</div><div class="steps-text">' + r.steps + '</div>';
-                    html += '<div style="display:flex; gap:8px; margin-top:12px;">';
-                    html += '<button class="btn btn-sm btn-secondary" onclick="openPlanModalWithRecipe(' + r.id + ')">📅 加入计划</button>';
-                    html += '<button class="btn btn-sm btn-secondary" style="color:#ff4d4f;" onclick="deleteRecipe(' + r.id + ')">删除</button></div></div>';
-                }
-            }
-            container.innerHTML = html;
-        }
-
-        function saveRecipe(e) {
-            e.preventDefault();
-            var id = document.getElementById('recipeId').value;
-            var newRecipe = {
-                id: id ? parseInt(id) : Date.now(),
-                name: document.getElementById('recipeName').value,
-                ingredients: document.getElementById('recipeIngredients').value,
-                steps: document.getElementById('recipeSteps').value,
-                age: document.getElementById('recipeAge').value
-            };
-
-            if (id) {
-                for (var i = 0; i < recipes.length; i++) {
-                    if (recipes[i].id === parseInt(id)) { recipes[i] = newRecipe; break; }
-                }
-            } else {
-                recipes.push(newRecipe);
+            function saveData() {
+                localStorage.setItem('baby_birth', babyBirth);
+                localStorage.setItem('baby_recipes', JSON.stringify(recipes));
+                localStorage.setItem('baby_date_plans', JSON.stringify(datePlans));
+                localStorage.setItem('baby_vaccines', JSON.stringify(vaccineNotes));
+                localStorage.setItem('baby_summaries', JSON.stringify(summaries));
             }
 
-            saveData();
-            closeModal('recipeModal');
-            document.getElementById('recipeForm').reset();
-            renderRecipes();
-            renderDailyMeal();
-        }
+            function getFormattedDate(dateObj) {
+                var y = dateObj.getFullYear();
+                var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                var d = String(dateObj.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
 
-        function deleteRecipe(id) {
-            if (confirm("确定要删除这个食谱吗？")) {
-                recipes = recipes.filter(function(r) { return r.id !== id; });
+            // 计算宝宝月龄 (X月X天)
+            function updateBabyAgeDisplay() {
+                if (!babyBirth) {
+                    document.getElementById('babyAgeDisplay').innerText = "未设置生日（点击设置）";
+                    return;
+                }
+                var birth = new Date(babyBirth);
+                var now = new Date();
+                
+                if (birth > now) {
+                    document.getElementById('babyAgeDisplay').innerText = "宝宝还没出生哦";
+                    return;
+                }
+
+                var years = now.getFullYear() - birth.getFullYear();
+                var months = now.getMonth() - birth.getMonth();
+                var days = now.getDate() - birth.getDate();
+
+                if (days < 0) {
+                    months -= 1;
+                    var lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+                    days += lastMonth.getDate();
+                }
+                if (months < 0) {
+                    years -= 1;
+                    months += 12;
+                }
+
+                var totalMonths = years * 12 + months;
+                document.getElementById('babyAgeDisplay').innerText = totalMonths + "个月" + days + "天";
+            }
+
+            // 导航切换
+            function switchTab(activeBtn, activeView) {
+                ['btnNavPlan', 'btnNavRecipe', 'btnNavSummary'].forEach(function(id){ document.getElementById(id).classList.remove('active'); });
+                ['planView', 'recipeView', 'summaryView'].forEach(function(id){ document.getElementById(id).classList.remove('active'); });
+                activeBtn.classList.add('active');
+                activeView.classList.add('active');
+            }
+
+            document.getElementById('btnNavPlan').addEventListener('click', function() { switchTab(this, document.getElementById('planView')); });
+            document.getElementById('btnNavRecipe').addEventListener('click', function() { switchTab(this, document.getElementById('recipeView')); });
+            document.getElementById('btnNavSummary').addEventListener('click', function() { switchTab(this, document.getElementById('summaryView')); });
+
+            // 弹窗逻辑
+            document.getElementById('btnSetBirth').addEventListener('click', function() {
+                document.getElementById('babyBirthInput').value = babyBirth;
+                document.getElementById('birthModal').classList.add('active');
+            });
+            document.getElementById('btnCancelBirth').addEventListener('click', function() { document.getElementById('birthModal').classList.remove('active'); });
+            document.getElementById('btnSaveBirth').addEventListener('click', function() {
+                babyBirth = document.getElementById('babyBirthInput').value;
                 saveData();
+                updateBabyAgeDisplay();
+                document.getElementById('birthModal').classList.remove('active');
+            });
+
+            document.getElementById('btnOpenAddRecipe').addEventListener('click', function() { document.getElementById('recipeModal').classList.add('active'); });
+            document.getElementById('btnCancelRecipe').addEventListener('click', function() { document.getElementById('recipeModal').classList.remove('active'); });
+
+            document.getElementById('btnOpenAddSummary').addEventListener('click', function() { document.getElementById('summaryModal').classList.add('active'); });
+            document.getElementById('btnCancelSummary').addEventListener('click', function() { document.getElementById('summaryModal').classList.remove('active'); });
+
+            document.getElementById('btnCancelPlan').addEventListener('click', function() { document.getElementById('planModal').classList.remove('active'); });
+            document.getElementById('btnCancelVaccine').addEventListener('click', function() { document.getElementById('vaccineModal').classList.remove('active'); });
+
+            // 渲染本周日历 selector (含完整年月日)
+            function renderWeekPills() {
+                var container = document.getElementById('weekPills');
+                container.innerHTML = '';
+
+                var curr = new Date(currentSelectedDate);
+                var first = curr.getDate() - (curr.getDay() === 0 ? 6 : curr.getDay() - 1); // 找到本周一
+
+                var weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
+                for (var i = 0; i < 7; i++) {
+                    var next = new Date(curr.setDate(first + i));
+                    var dateStr = getFormattedDate(next);
+                    var dayLabel = weekDays[i];
+                    var shortDateStr = (next.getMonth() + 1) + '.' + next.getDate();
+
+                    var div = document.createElement('div');
+                    div.className = 'day-pill ' + (dateStr === currentSelectedDate ? 'active' : '');
+                    
+                    var hasVaccine = vaccineNotes[dateStr] ? '💉' : '';
+                    div.innerHTML = '<span>' + dayLabel + ' ' + hasVaccine + '</span><span class="date-str">' + shortDateStr + '</span>';
+                    
+                    (function(dStr) {
+                        div.addEventListener('click', function() {
+                            currentSelectedDate = dStr;
+                            renderWeekPills();
+                        });
+                    })(dateStr);
+
+                    container.appendChild(div);
+                }
+
+                renderDailyMeal();
+            }
+
+            // 渲染日排餐与疫苗提示
+            function renderDailyMeal() {
+                var container = document.getElementById('dailyMealContent');
+                container.innerHTML = '';
+
+                // 疫苗提示 Bar
+                var vBannerArea = document.getElementById('vaccineBannerArea');
+                var vNote = vaccineNotes[currentSelectedDate];
+                
+                vBannerArea.innerHTML = '<div class="vaccine-banner">' +
+                    '<span>📅 当前日期：<b>' + currentSelectedDate + '</b> ' + (vNote ? ' | 💉 备注：<b>' + vNote + '</b>' : '') + '</span>' +
+                    '<button class="btn btn-sm btn-warning" id="btnEditVaccine">' + (vNote ? '修改标记' : '+ 标记疫苗/事项') + '</button>' +
+                    '</div>';
+
+                document.getElementById('btnEditVaccine').addEventListener('click', function() {
+                    document.getElementById('vaccineDateInput').value = currentSelectedDate;
+                    document.getElementById('vaccineNoteInput').value = vNote || '';
+                    document.getElementById('vaccineModal').classList.add('active');
+                });
+
+                var dayPlan = datePlans[currentSelectedDate] || {};
+                var meals = ["早餐", "午餐", "下午加餐", "晚餐"];
+
+                meals.forEach(function(meal) {
+                    var recipeId = dayPlan[meal];
+                    var recipe = recipes.find(function(r) { return r.id === recipeId; });
+
+                    var section = document.createElement('div');
+                    section.className = 'meal-section';
+
+                    var titleDiv = document.createElement('div');
+                    titleDiv.className = 'meal-title';
+                    titleDiv.innerHTML = '<span>📌 ' + meal + '</span>';
+
+                    var addBtn = document.createElement('button');
+                    addBtn.className = 'btn btn-sm btn-secondary';
+                    addBtn.innerText = '+ 安排';
+                    addBtn.addEventListener('click', function() {
+                        openPlanModal(currentSelectedDate, meal);
+                    });
+                    titleDiv.appendChild(addBtn);
+                    section.appendChild(titleDiv);
+
+                    if (recipe) {
+                        var card = document.createElement('div');
+                        card.className = 'card';
+                        card.style.marginBottom = '0';
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div><span class="badge">' + recipe.age + '</span></div>' +
+                                         '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(function(i){ return '<span class="tag">' + i.trim() + '</span>'; }).join('') + '</div>' +
+                                         '<div class="steps-text">' + recipe.steps + '</div>';
+
+                        var removeBtn = document.createElement('button');
+                        removeBtn.className = 'btn btn-sm btn-secondary';
+                        removeBtn.style.marginTop = '10px';
+                        removeBtn.style.color = '#ff4d4f';
+                        removeBtn.innerText = '移除此餐';
+                        removeBtn.addEventListener('click', function() {
+                            delete datePlans[currentSelectedDate][meal];
+                            saveData();
+                            renderDailyMeal();
+                        });
+                        card.appendChild(removeBtn);
+                        section.appendChild(card);
+                    } else {
+                        var emptyDiv = document.createElement('div');
+                        emptyDiv.style.cssText = 'background:#fff; border: 2px dashed #E5E5EA; border-radius:12px; padding:12px; text-align:center; color:#aaa; font-size:12px;';
+                        emptyDiv.innerText = '暂无排餐，点击右上角安排';
+                        section.appendChild(emptyDiv);
+                    }
+
+                    container.appendChild(section);
+                });
+            }
+
+            // 标注疫苗保存
+            document.getElementById('btnSaveVaccine').addEventListener('click', function() {
+                var dStr = document.getElementById('vaccineDateInput').value;
+                var note = document.getElementById('vaccineNoteInput').value;
+                if (note) {
+                    vaccineNotes[dStr] = note;
+                } else {
+                    delete vaccineNotes[dStr];
+                }
+                saveData();
+                document.getElementById('vaccineModal').classList.remove('active');
+                renderWeekPills();
+            });
+
+            // 排餐弹窗
+            function openPlanModal(dateStr, meal) {
+                document.getElementById('planDateSelect').value = dateStr;
+                document.getElementById('planMealSelect').value = meal;
+                
+                var recipeSel = document.getElementById('planRecipeSelect');
+                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + r.age + ')</option>'; }).join('');
+
+                document.getElementById('planModal').classList.add('active');
+            }
+
+            document.getElementById('btnSavePlan').addEventListener('click', function() {
+                var dateStr = document.getElementById('planDateSelect').value;
+                var meal = document.getElementById('planMealSelect').value;
+                var recipeId = parseInt(document.getElementById('planRecipeSelect').value);
+
+                if (!datePlans[dateStr]) datePlans[dateStr] = {};
+                datePlans[dateStr][meal] = recipeId;
+
+                saveData();
+                document.getElementById('planModal').classList.remove('active');
+                renderDailyMeal();
+            });
+
+            // 渲染食谱库
+            function renderRecipes() {
+                var query = document.getElementById('searchInput').value.toLowerCase();
+                var container = document.getElementById('recipeList');
+                container.innerHTML = '';
+
+                recipes.forEach(function(r) {
+                    if (r.name.toLowerCase().includes(query) || r.ingredients.toLowerCase().includes(query)) {
+                        var card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div><span class="badge">' + r.age + '</span></div>' +
+                                         '<div class="ingredients-tag">' + r.ingredients.split(',').map(function(i){ return '<span class="tag">🥦 ' + i.trim() + '</span>'; }).join('') + '</div>' +
+                                         '<div class="steps-text">' + r.steps + '</div>';
+
+                        var btnGroup = document.createElement('div');
+                        btnGroup.style.cssText = 'display:flex; gap:8px; margin-top:12px;';
+
+                        var planBtn = document.createElement('button');
+                        planBtn.className = 'btn btn-sm btn-secondary';
+                        planBtn.innerText = '📅 加入计划';
+                        planBtn.addEventListener('click', function() {
+                            openPlanModal(currentSelectedDate, "早餐");
+                            document.getElementById('planRecipeSelect').value = r.id;
+                        });
+
+                        var delBtn = document.createElement('button');
+                        delBtn.className = 'btn btn-sm btn-secondary';
+                        delBtn.style.color = '#ff4d4f';
+                        delBtn.innerText = '删除';
+                        delBtn.addEventListener('click', function() {
+                            if (confirm("确定删除此食谱吗？")) {
+                                recipes = recipes.filter(function(item) { return item.id !== r.id; });
+                                saveData();
+                                renderRecipes();
+                                renderDailyMeal();
+                            }
+                        });
+
+                        btnGroup.appendChild(planBtn);
+                        btnGroup.appendChild(delBtn);
+                        card.appendChild(btnGroup);
+                        container.appendChild(card);
+                    }
+                });
+            }
+
+            // 保存新食谱
+            document.getElementById('recipeForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                var newRecipe = {
+                    id: Date.now(),
+                    name: document.getElementById('recipeName').value,
+                    ingredients: document.getElementById('recipeIngredients').value,
+                    steps: document.getElementById('recipeSteps').value,
+                    age: document.getElementById('recipeAge').value
+                };
+                recipes.push(newRecipe);
+                saveData();
+                document.getElementById('recipeModal').classList.remove('active');
+                document.getElementById('recipeForm').reset();
                 renderRecipes();
                 renderDailyMeal();
+            });
+
+            // 渲染月龄小结页
+            function renderSummaries() {
+                var container = document.getElementById('summaryList');
+                container.innerHTML = '';
+
+                if (summaries.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:#aaa; font-size:13px;">暂无月龄小结，点击右上角添加</div>';
+                    return;
+                }
+
+                summaries.forEach(function(s, index) {
+                    var card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = '<div class="card-header"><div class="card-title">' + s.stage + '</div></div>' +
+                                     '<div style="font-size:13px; color:#555; margin-bottom:6px;"><b>🥦 新解锁食材：</b>' + (s.foods || '无') + '</div>' +
+                                     '<div class="steps-text"><b>📝 总结与心得：</b>\n' + s.notes + '</div>';
+
+                    var delBtn = document.createElement('button');
+                    delBtn.className = 'btn btn-sm btn-secondary';
+                    delBtn.style.cssText = 'margin-top:10px; color:#ff4d4f;';
+                    delBtn.innerText = '删除小结';
+                    delBtn.addEventListener('click', function() {
+                        if (confirm("确定删除这条月龄小结吗？")) {
+                            summaries.splice(index, 1);
+                            saveData();
+                            renderSummaries();
+                        }
+                    });
+
+                    card.appendChild(delBtn);
+                    container.appendChild(card);
+                });
             }
-        }
 
-        function openPlanModal(day, meal) {
-            var daySel = document.getElementById('planDaySelect');
-            var recipeSel = document.getElementById('planRecipeSelect');
-            
-            var dayHtml = '';
-            for (var i = 0; i < days.length; i++) {
-                var d = days[i];
-                dayHtml += '<option value="' + d + '" ' + (d === day ? 'selected' : '') + '>' + d + '</option>';
-            }
-            daySel.innerHTML = dayHtml;
-
-            var recHtml = '';
-            for (var j = 0; j < recipes.length; j++) {
-                var r = recipes[j];
-                recHtml += '<option value="' + r.id + '">' + r.name + ' (' + r.age + ')</option>';
-            }
-            recipeSel.innerHTML = recHtml;
-
-            document.getElementById('planMealSelect').value = meal;
-            openModal('planModal');
-        }
-
-        function openPlanModalWithRecipe(recipeId) {
-            openPlanModal(currentSelectedDay, "早餐");
-            document.getElementById('planRecipeSelect').value = recipeId;
-        }
-
-        function savePlan() {
-            var day = document.getElementById('planDaySelect').value;
-            var meal = document.getElementById('planMealSelect').value;
-            var recipeId = parseInt(document.getElementById('planRecipeSelect').value);
-
-            if (!plans[day]) plans[day] = {};
-            plans[day][meal] = recipeId;
-
-            saveData();
-            closeModal('planModal');
-            renderDailyMeal();
-        }
-
-        function removeMeal(day, meal) {
-            if (plans[day] && plans[day][meal]) {
-                delete plans[day][meal];
+            // 保存月龄小结
+            document.getElementById('summaryForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                var newSummary = {
+                    stage: document.getElementById('summaryStage').value,
+                    foods: document.getElementById('summaryNewFoods').value,
+                    notes: document.getElementById('summaryNotes').value
+                };
+                summaries.unshift(newSummary); // 新小结排前面
                 saveData();
-                renderDailyMeal();
-            }
-        }
+                document.getElementById('summaryModal').classList.remove('active');
+                document.getElementById('summaryForm').reset();
+                renderSummaries();
+            });
 
-        // 页面初始化加载
-        renderWeekPills();
-        renderRecipes();
+            document.getElementById('searchInput').addEventListener('input', renderRecipes);
+
+            // 初始化加载
+            updateBabyAgeDisplay();
+            renderWeekPills();
+            renderRecipes();
+            renderSummaries();
+        });
     </script>
 </body>
 </html>
