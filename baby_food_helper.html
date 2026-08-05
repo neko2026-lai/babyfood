@@ -33,14 +33,19 @@
         .view { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
         .view.active { display: block; }
         
-        .search-box { background: #fff; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; margin-bottom: 16px; box-shadow: var(--shadow); }
-        .search-box input { border: none; outline: none; width: 100%; font-size: 15px; }
-        
+        /* 搜素与筛选组合框 */
+        .search-filter-box { display: flex; gap: 8px; margin-bottom: 16px; }
+        .search-box { background: #fff; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; flex: 1; box-shadow: var(--shadow); }
+        .search-box input { border: none; outline: none; width: 100%; font-size: 14px; }
+        .category-select { background: #fff; border: none; border-radius: 12px; padding: 0 10px; font-size: 14px; color: var(--dark); outline: none; box-shadow: var(--shadow); cursor: pointer; }
+
         .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); position: relative; }
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         .card-title { font-size: 16px; font-weight: 600; color: var(--dark); }
+        .badge-group { display: flex; gap: 4px; }
         .badge { background: var(--primary-light); color: var(--primary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
-        
+        .badge-cat { background: var(--secondary-light); color: var(--secondary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
+
         .vaccine-banner { background: #FFF9E6; border: 1px solid #FFE0B2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #D97706; display: flex; justify-content: space-between; align-items: center; }
         
         .ingredients-tag { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
@@ -88,7 +93,6 @@
 
     <!-- 1. 辅食计划页 -->
     <main id="planView" class="view active">
-        <!-- 备份与飞书多维表格操作栏 -->
         <div class="backup-bar">
             <span style="font-size:12px; color:#666; font-weight:600;">📊 飞书多维表格：</span>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -106,8 +110,19 @@
 
     <!-- 2. 食谱灵感库页 -->
     <main id="recipeView" class="view">
-        <div class="search-box">
-            🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：胡萝卜、猪肝）...">
+        <div class="search-filter-box">
+            <div class="search-box">
+                🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：胡萝卜、猪肝）...">
+            </div>
+            <select id="categoryFilter" class="category-select">
+                <option value="全部分类">全部分类</option>
+                <option value="主食">主食</option>
+                <option value="肉">肉</option>
+                <option value="蔬菜">蔬菜</option>
+                <option value="水果">水果</option>
+                <option value="酱">酱</option>
+                <option value="甜点">甜点</option>
+            </select>
         </div>
         <div id="recipeList"></div>
     </main>
@@ -162,14 +177,26 @@
         </div>
     </div>
 
-    <!-- 弹窗：新增食谱 -->
+    <!-- 弹窗：新增/编辑食谱 -->
     <div class="modal" id="recipeModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:14px;">📝 新增食谱</h3>
+            <h3 style="margin-bottom:14px;" id="recipeModalTitle">📝 新增食谱</h3>
             <form id="recipeForm">
+                <input type="hidden" id="recipeEditId">
                 <div class="form-group">
                     <label>食谱名称</label>
                     <input type="text" id="recipeName" placeholder="例如：胡萝卜牛肉泥" required>
+                </div>
+                <div class="form-group">
+                    <label>食谱分类</label>
+                    <select id="recipeCategory" required>
+                        <option value="主食">主食</option>
+                        <option value="肉">肉</option>
+                        <option value="蔬菜">蔬菜</option>
+                        <option value="水果">水果</option>
+                        <option value="酱">酱</option>
+                        <option value="甜点">甜点</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>食材与用量（逗号分隔）</label>
@@ -263,8 +290,8 @@
         document.addEventListener("DOMContentLoaded", function() {
             var babyBirth = localStorage.getItem('baby_birth') || '';
             var recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
-                { id: 1, name: "胡萝卜猪肝泥", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6个月" },
-                { id: 2, name: "西兰花三文鱼粥", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8个月" }
+                { id: 1, name: "胡萝卜猪肝泥", category: "肉", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6个月" },
+                { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8个月" }
             ];
             var datePlans = JSON.parse(localStorage.getItem('baby_date_plans')) || {};
             var vaccineNotes = JSON.parse(localStorage.getItem('baby_vaccines')) || {};
@@ -291,8 +318,7 @@
             // 📊 导出适应飞书多维表格的 CSV
             document.getElementById('btnExportCSV').addEventListener('click', function() {
                 var csvRows = [];
-                // CSV 表头
-                csvRows.push(['记录类型', '日期/阶段', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
+                csvRows.push(['记录类型', '日期/阶段/分类', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
 
                 // 1. 导出排餐计划
                 Object.keys(datePlans).forEach(function(dStr) {
@@ -318,7 +344,7 @@
                 recipes.forEach(function(r) {
                     csvRows.push([
                         '食谱库',
-                        r.age,
+                        r.age + ' | ' + (r.category || '未分类'),
                         '-',
                         r.name,
                         r.ingredients,
@@ -338,7 +364,7 @@
                     ].map(escapeCSV).join(','));
                 });
 
-                var csvContent = "\uFEFF" + csvRows.join('\n'); // 增加 UTF-8 BOM，防止 Excel / 飞书乱码
+                var csvContent = "\uFEFF" + csvRows.join('\n');
                 var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
@@ -414,12 +440,12 @@
             document.getElementById('btnNavRecipe').addEventListener('click', function() { switchTab(this, document.getElementById('recipeView')); });
             document.getElementById('btnNavSummary').addEventListener('click', function() { switchTab(this, document.getElementById('summaryView')); });
 
-            // 弹窗
+            // 弹窗控制
             document.getElementById('btnSetBirth').addEventListener('click', function() { document.getElementById('babyBirthInput').value = babyBirth; document.getElementById('birthModal').classList.add('active'); });
             document.getElementById('btnCancelBirth').addEventListener('click', function() { document.getElementById('birthModal').classList.remove('active'); });
             document.getElementById('btnSaveBirth').addEventListener('click', function() { babyBirth = document.getElementById('babyBirthInput').value; saveData(); updateBabyAgeDisplay(); document.getElementById('birthModal').classList.remove('active'); });
 
-            document.getElementById('btnOpenAddRecipe').addEventListener('click', function() { document.getElementById('recipeModal').classList.add('active'); });
+            document.getElementById('btnOpenAddRecipe').addEventListener('click', function() { openRecipeModal(); });
             document.getElementById('btnCancelRecipe').addEventListener('click', function() { document.getElementById('recipeModal').classList.remove('active'); });
 
             document.getElementById('btnOpenAddSummary').addEventListener('click', function() { document.getElementById('summaryModal').classList.add('active'); });
@@ -499,7 +525,10 @@
                         var card = document.createElement('div');
                         card.className = 'card';
                         card.style.marginBottom = '0';
-                        card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div><span class="badge">' + recipe.age + '</span></div>' +
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div>' +
+                                         '<div class="badge-group">' +
+                                         (recipe.category ? '<span class="badge-cat">' + recipe.category + '</span>' : '') +
+                                         '<span class="badge">' + recipe.age + '</span></div></div>' +
                                          '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(function(i){ return '<span class="tag">' + i.trim() + '</span>'; }).join('') + '</div>' +
                                          '<div class="steps-text">' + recipe.steps + '</div>';
 
@@ -541,7 +570,7 @@
                 document.getElementById('planDateSelect').value = dateStr;
                 document.getElementById('planMealSelect').value = meal;
                 var recipeSel = document.getElementById('planRecipeSelect');
-                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + r.age + ')</option>'; }).join('');
+                recipeSel.innerHTML = recipes.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + (r.category || '未分类') + ' - ' + r.age + ')</option>'; }).join('');
                 document.getElementById('planModal').classList.add('active');
             }
 
@@ -556,17 +585,43 @@
                 renderDailyMeal();
             });
 
-            // 食谱库
+            // 打开新增/编辑食谱弹窗
+            function openRecipeModal(recipeToEdit) {
+                var form = document.getElementById('recipeForm');
+                form.reset();
+                if (recipeToEdit) {
+                    document.getElementById('recipeModalTitle').innerText = "✏️ 编辑食谱";
+                    document.getElementById('recipeEditId').value = recipeToEdit.id;
+                    document.getElementById('recipeName').value = recipeToEdit.name;
+                    document.getElementById('recipeCategory').value = recipeToEdit.category || '主食';
+                    document.getElementById('recipeIngredients').value = recipeToEdit.ingredients;
+                    document.getElementById('recipeSteps').value = recipeToEdit.steps;
+                    document.getElementById('recipeAge').value = recipeToEdit.age;
+                } else {
+                    document.getElementById('recipeModalTitle').innerText = "📝 新增食谱";
+                    document.getElementById('recipeEditId').value = "";
+                }
+                document.getElementById('recipeModal').classList.add('active');
+            }
+
+            // 渲染食谱库（包含关键词和分类筛选）
             function renderRecipes() {
                 var query = document.getElementById('searchInput').value.toLowerCase();
+                var selectedCat = document.getElementById('categoryFilter').value;
                 var container = document.getElementById('recipeList');
                 container.innerHTML = '';
 
                 recipes.forEach(function(r) {
-                    if (r.name.toLowerCase().includes(query) || r.ingredients.toLowerCase().includes(query)) {
+                    var matchQuery = r.name.toLowerCase().includes(query) || r.ingredients.toLowerCase().includes(query);
+                    var matchCat = (selectedCat === '全部分类') || (r.category === selectedCat);
+
+                    if (matchQuery && matchCat) {
                         var card = document.createElement('div');
                         card.className = 'card';
-                        card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div><span class="badge">' + r.age + '</span></div>' +
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div>' +
+                                         '<div class="badge-group">' +
+                                         (r.category ? '<span class="badge-cat">' + r.category + '</span>' : '') +
+                                         '<span class="badge">' + r.age + '</span></div></div>' +
                                          '<div class="ingredients-tag">' + r.ingredients.split(',').map(function(i){ return '<span class="tag">🥦 ' + i.trim() + '</span>'; }).join('') + '</div>' +
                                          '<div class="steps-text">' + r.steps + '</div>';
 
@@ -579,6 +634,13 @@
                         planBtn.addEventListener('click', function() {
                             openPlanModal(currentSelectedDate, "早餐");
                             document.getElementById('planRecipeSelect').value = r.id;
+                        });
+
+                        var editBtn = document.createElement('button');
+                        editBtn.className = 'btn btn-sm btn-outline';
+                        editBtn.innerText = '✏️ 编辑';
+                        editBtn.addEventListener('click', function() {
+                            openRecipeModal(r);
                         });
 
                         var delBtn = document.createElement('button');
@@ -595,6 +657,7 @@
                         });
 
                         btnGroup.appendChild(planBtn);
+                        btnGroup.appendChild(editBtn);
                         btnGroup.appendChild(delBtn);
                         card.appendChild(btnGroup);
                         container.appendChild(card);
@@ -602,16 +665,29 @@
                 });
             }
 
+            // 保存食谱（支持新增和编辑）
             document.getElementById('recipeForm').addEventListener('submit', function(e) {
                 e.preventDefault();
-                var newRecipe = {
-                    id: Date.now(),
+                var editId = document.getElementById('recipeEditId').value;
+                var recipeData = {
                     name: document.getElementById('recipeName').value,
+                    category: document.getElementById('recipeCategory').value,
                     ingredients: document.getElementById('recipeIngredients').value,
                     steps: document.getElementById('recipeSteps').value,
                     age: document.getElementById('recipeAge').value
                 };
-                recipes.push(newRecipe);
+
+                if (editId) {
+                    var idNum = parseInt(editId);
+                    var idx = recipes.findIndex(function(r) { return r.id === idNum; });
+                    if (idx !== -1) {
+                        recipes[idx] = Object.assign({ id: idNum }, recipeData);
+                    }
+                } else {
+                    recipeData.id = Date.now();
+                    recipes.push(recipeData);
+                }
+
                 saveData();
                 document.getElementById('recipeModal').classList.remove('active');
                 document.getElementById('recipeForm').reset();
@@ -667,9 +743,11 @@
                 renderSummaries();
             });
 
+            // 食材搜索与分类筛选联动监听
             document.getElementById('searchInput').addEventListener('input', renderRecipes);
+            document.getElementById('categoryFilter').addEventListener('change', renderRecipes);
 
-            // 初始化
+            // 初始化渲染
             updateBabyAgeDisplay();
             renderWeekPills();
             renderRecipes();
