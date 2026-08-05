@@ -21,41 +21,33 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--gray-bg); color: var(--dark); padding-bottom: 80px; }
 
-        /* Header */
         header { background: #fff; padding: 16px 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; }
         header h1 { font-size: 20px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
         
-        /* Navigation Bar */
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; display: flex; justify-content: space-around; padding: 10px 0 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: none; color: #8E8E93; font-size: 11px; width: 33%; cursor: pointer; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: none; color: #8E8E93; font-size: 11px; width: 50%; cursor: pointer; }
         .nav-item.active { color: var(--primary); font-weight: bold; }
         .nav-item svg { width: 24px; height: 24px; fill: currentColor; }
 
-        /* Views Container */
         .view { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
         .view.active { display: block; }
 
-        /* Search & Filter Bar */
         .search-box { background: #fff; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; box-shadow: var(--shadow); }
         .search-box input { border: none; outline: none; width: 100%; font-size: 15px; }
 
-        /* Cards */
         .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
         .card-title { font-size: 17px; font-weight: 600; color: var(--dark); }
         .badge { background: var(--primary-light); color: var(--primary); font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
         
-        /* Recipe Ingredients & Steps */
         .ingredients-tag { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
         .tag { background: #F0F2F5; color: #555; font-size: 12px; padding: 4px 10px; border-radius: 8px; }
         .steps-text { font-size: 14px; color: #666; line-height: 1.5; white-space: pre-line; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
 
-        /* Buttons */
         .btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
         .btn-secondary { background: var(--secondary-light); color: var(--secondary); }
         .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; width: auto; }
 
-        /* Calendar / Week Plan */
         .week-selector { display: flex; justify-content: space-between; background: #fff; padding: 12px; border-radius: var(--border-radius); margin-bottom: 16px; box-shadow: var(--shadow); }
         .day-pill { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 12px; cursor: pointer; font-size: 13px; min-width: 44px; }
         .day-pill.active { background: var(--primary); color: #fff; font-weight: bold; }
@@ -63,11 +55,9 @@
         .meal-section { margin-bottom: 16px; }
         .meal-title { font-size: 14px; font-weight: 600; color: #888; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
 
-        /* Modal Form */
         .modal { display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: flex-end; }
         .modal.active { display: flex; }
-        .modal-content { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 24px; animation: slideUp 0.25s ease-out; }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-content { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 24px; }
 
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
@@ -79,32 +69,21 @@
 
     <header>
         <h1>👶 宝宝辅食通</h1>
-        <button class="btn btn-sm" onclick="openModal('recipeModal')" style="width:auto;">+ 记食谱</button>
+        <button class="btn btn-sm" onclick="openModal('recipeModal')">+ 记食谱</button>
     </header>
 
-    <!-- 视图1：辅食周计划 -->
     <main id="planView" class="view active">
-        <div class="week-selector" id="weekPills">
-            <!-- JS 动态渲染周一至周日 -->
-        </div>
-
-        <div id="dailyMealContent">
-            <!-- JS 动态渲染当天的餐次安排 -->
-        </div>
+        <div class="week-selector" id="weekPills"></div>
+        <div id="dailyMealContent"></div>
     </main>
 
-    <!-- 视图2：食谱灵感库 -->
     <main id="recipeView" class="view">
         <div class="search-box">
-            🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：西兰花、猪肝）或食谱..." oninput="renderRecipes()">
+            🔍 <input type="text" id="searchInput" placeholder="搜索食材（如：西兰花、猪肝）..." oninput="renderRecipes()">
         </div>
-
-        <div id="recipeList">
-            <!-- JS 动态渲染食谱卡片 -->
-        </div>
+        <div id="recipeList"></div>
     </main>
 
-    <!-- 底部导航 -->
     <nav class="bottom-nav">
         <button class="nav-item active" onclick="switchView('planView', this)">
             <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
@@ -116,7 +95,6 @@
         </button>
     </nav>
 
-    <!-- 添加/编辑食谱 弹窗 -->
     <div class="modal" id="recipeModal">
         <div class="modal-content">
             <h3 style="margin-bottom:16px;">📝 新增/编辑食谱</h3>
@@ -127,20 +105,20 @@
                     <input type="text" id="recipeName" placeholder="例如：胡萝卜牛肉泥" required>
                 </div>
                 <div class="form-group">
-                    <label>食材与用量（用逗号分隔）</label>
-                    <input type="text" id="recipeIngredients" placeholder="例如：牛肉 30g, 胡萝卜 20g, 辅食油 2滴" required>
+                    <label>食材与用量（逗号分隔）</label>
+                    <input type="text" id="recipeIngredients" placeholder="牛肉 30g, 胡萝卜 20g" required>
                 </div>
                 <div class="form-group">
-                    <label>制作步骤 / 提示</label>
-                    <textarea id="recipeSteps" placeholder="1. 牛肉蒸熟切碎&#10;2. 胡萝卜蒸熟压泥混合..."></textarea>
+                    <label>制作步骤</label>
+                    <textarea id="recipeSteps" placeholder="1. 蒸熟&#10;2. 打泥"></textarea>
                 </div>
                 <div class="form-group">
                     <label>适合月龄</label>
                     <select id="recipeAge">
-                        <option value="6-7个月">6-7个月（高铁泥糊）</option>
-                        <option value="8-9个月">8-9个月（颗粒小丁）</option>
-                        <option value="10-12个月">10-12个月（块状嚼嚼）</option>
-                        <option value="1岁+">1岁+（幼儿餐）</option>
+                        <option value="6-7个月">6-7个月</option>
+                        <option value="8-9个月">8-9个月</option>
+                        <option value="10-12个月">10-12个月</option>
+                        <option value="1岁+">1岁+</option>
                     </select>
                 </div>
                 <div style="display:flex; gap:10px;">
@@ -151,7 +129,6 @@
         </div>
     </div>
 
-    <!-- 安排排餐 弹窗 -->
     <div class="modal" id="planModal">
         <div class="modal-content">
             <h3 style="margin-bottom:16px;">📅 排入辅食计划</h3>
@@ -162,10 +139,10 @@
             <div class="form-group">
                 <label>选择餐次</label>
                 <select id="planMealSelect">
-                    <option value="早餐">早餐 (09:00)</option>
-                    <option value="午餐">午餐 (12:00)</option>
-                    <option value="下午加餐">下午加餐 (15:30)</option>
-                    <option value="晚餐">晚餐 (18:00)</option>
+                    <option value="早餐">早餐</option>
+                    <option value="午餐">午餐</option>
+                    <option value="下午加餐">下午加餐</option>
+                    <option value="晚餐">晚餐</option>
                 </select>
             </div>
             <div class="form-group">
@@ -180,23 +157,18 @@
     </div>
 
     <script>
-        // 本地数据存储
-        let recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
-            { id: 1, name: "胡萝卜猪肝泥", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝浸泡去血水后蒸熟
-2. 胡萝卜蒸软
-3. 一起打成细腻泥糊", age: "6-7个月" },
-            { id: 2, name: "西兰花三文鱼粥", ingredients: "三文鱼 25g, 西兰花 15g, 胚芽米 20g", steps: "1. 胚芽米煮成粘稠软粥
-2. 三文鱼蒸熟撕碎，西兰花焯水切碎
-3. 混合搅拌均匀", age: "8-9个月" }
+        var recipes = JSON.parse(localStorage.getItem('baby_recipes')) || [
+            { id: 1, name: "胡萝卜猪肝泥", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", age: "6-7个月" },
+            { id: 2, name: "西兰花三文鱼粥", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", age: "8-9个月" }
         ];
 
-        let plans = JSON.parse(localStorage.getItem('baby_plans')) || {
+        var plans = JSON.parse(localStorage.getItem('baby_plans')) || {
             "周一": { "早餐": 1 },
             "周二": { "午餐": 2 }
         };
 
-        const days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
-        let currentSelectedDay = "周一";
+        var days = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+        var currentSelectedDay = "周一";
 
         function saveData() {
             localStorage.setItem('baby_recipes', JSON.stringify(recipes));
@@ -204,8 +176,8 @@
         }
 
         function switchView(viewId, btn) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+            document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
             document.getElementById(viewId).classList.add('active');
             btn.classList.add('active');
         }
@@ -213,14 +185,15 @@
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-        // 渲染周日历选择器
         function renderWeekPills() {
-            const container = document.getElementById('weekPills');
-            container.innerHTML = days.map(day => `
-                <div class="day-pill ${day === currentSelectedDay ? 'active' : ''}" onclick="selectDay('${day}')">
-                    <span>${day}</span>
-                </div>
-            `).join('');
+            var container = document.getElementById('weekPills');
+            var html = '';
+            for (var i = 0; i < days.length; i++) {
+                var day = days[i];
+                var activeClass = (day === currentSelectedDay) ? 'active' : '';
+                html += '<div class="day-pill ' + activeClass + '" onclick="selectDay(\'' + day + '\')"><span>' + day + '</span></div>';
+            }
+            container.innerHTML = html;
             renderDailyMeal();
         }
 
@@ -229,72 +202,69 @@
             renderWeekPills();
         }
 
-        // 渲染日排餐列表
         function renderDailyMeal() {
-            const container = document.getElementById('dailyMealContent');
-            const dayPlan = plans[currentSelectedDay] || {};
-            const meals = ["早餐", "午餐", "下午加餐", "晚餐"];
+            var container = document.getElementById('dailyMealContent');
+            var dayPlan = plans[currentSelectedDay] || {};
+            var meals = ["早餐", "午餐", "下午加餐", "晚餐"];
+            var html = '';
 
-            container.innerHTML = meals.map(meal => {
-                const recipeId = dayPlan[meal];
-                const recipe = recipes.find(r => r.id === recipeId);
+            for (var i = 0; i < meals.length; i++) {
+                var meal = meals[i];
+                var recipeId = dayPlan[meal];
+                var recipe = null;
+                for (var j = 0; j < recipes.length; j++) {
+                    if (recipes[j].id === recipeId) { recipe = recipes[j]; break; }
+                }
 
-                return `
-                    <div class="meal-section">
-                        <div class="meal-title">
-                            <span>📌 ${meal}</span>
-                            <button class="btn btn-sm btn-secondary" onclick="openPlanModal('${currentSelectedDay}', '${meal}')">+ 安排</button>
-                        </div>
-                        ${recipe ? `
-                            <div class="card" style="margin-bottom:0;">
-                                <div class="card-header">
-                                    <div class="card-title">${recipe.name}</div>
-                                    <span class="badge">${recipe.age}</span>
-                                </div>
-                                <div class="ingredients-tag">
-                                    ${recipe.ingredients.split(',').map(i => `<span class="tag">${i.trim()}</span>`).join('')}
-                                </div>
-                                <div class="steps-text">${recipe.steps}</div>
-                                <button class="btn btn-sm btn-secondary" style="margin-top:10px; color:#ff4d4f;" onclick="removeMeal('${currentSelectedDay}', '${meal}')">移除此餐</button>
-                            </div>
-                        ` : `
-                            <div style="background:#fff; border: 2px dashed #E5E5EA; border-radius:12px; padding:16px; text-align:center; color:#aaa; font-size:13px;">
-                                暂无排餐，点击上方添加
-                            </div>
-                        `}
-                    </div>
-                `;
-            }).join('');
+                html += '<div class="meal-section">';
+                html += '<div class="meal-title"><span>📌 ' + meal + '</span>';
+                html += '<button class="btn btn-sm btn-secondary" onclick="openPlanModal(\'' + currentSelectedDay + '\', \'' + meal + '\')">+ 安排</button></div>';
+
+                if (recipe) {
+                    html += '<div class="card" style="margin-bottom:0;"><div class="card-header"><div class="card-title">' + recipe.name + '</div>';
+                    html += '<span class="badge">' + recipe.age + '</span></div>';
+                    html += '<div class="ingredients-tag">';
+                    var tags = recipe.ingredients.split(',');
+                    for (var k = 0; k < tags.length; k++) {
+                        html += '<span class="tag">' + tags[k].trim() + '</span>';
+                    }
+                    html += '</div><div class="steps-text">' + recipe.steps + '</div>';
+                    html += '<button class="btn btn-sm btn-secondary" style="margin-top:10px; color:#ff4d4f;" onclick="removeMeal(\'' + currentSelectedDay + '\', \'' + meal + '\')">移除此餐</button></div>';
+                } else {
+                    html += '<div style="background:#fff; border: 2px dashed #E5E5EA; border-radius:12px; padding:16px; text-align:center; color:#aaa; font-size:13px;">暂无排餐，点击右上角安排</div>';
+                }
+                html += '</div>';
+            }
+            container.innerHTML = html;
         }
 
-        // 渲染食谱库
         function renderRecipes() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const container = document.getElementById('recipeList');
-            const filtered = recipes.filter(r => r.name.toLowerCase().includes(query) || r.ingredients.toLowerCase().includes(query));
+            var query = document.getElementById('searchInput').value.toLowerCase();
+            var container = document.getElementById('recipeList');
+            var html = '';
 
-            container.innerHTML = filtered.map(r => `
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">${r.name}</div>
-                        <span class="badge">${r.age}</span>
-                    </div>
-                    <div class="ingredients-tag">
-                        ${r.ingredients.split(',').map(i => `<span class="tag">🥦 ${i.trim()}</span>`).join('')}
-                    </div>
-                    <div class="steps-text">${r.steps}</div>
-                    <div style="display:flex; gap:8px; margin-top:12px;">
-                        <button class="btn btn-sm btn-secondary" onclick="openPlanModalWithRecipe(${r.id})">📅 加入计划</button>
-                        <button class="btn btn-sm btn-secondary" style="color:#ff4d4f;" onclick="deleteRecipe(${r.id})">删除</button>
-                    </div>
-                </div>
-            `).join('');
+            for (var i = 0; i < recipes.length; i++) {
+                var r = recipes[i];
+                if (r.name.toLowerCase().indexOf(query) !== -1 || r.ingredients.toLowerCase().indexOf(query) !== -1) {
+                    html += '<div class="card"><div class="card-header"><div class="card-title">' + r.name + '</div>';
+                    html += '<span class="badge">' + r.age + '</span></div><div class="ingredients-tag">';
+                    var tags = r.ingredients.split(',');
+                    for (var k = 0; k < tags.length; k++) {
+                        html += '<span class="tag">🥦 ' + tags[k].trim() + '</span>';
+                    }
+                    html += '</div><div class="steps-text">' + r.steps + '</div>';
+                    html += '<div style="display:flex; gap:8px; margin-top:12px;">';
+                    html += '<button class="btn btn-sm btn-secondary" onclick="openPlanModalWithRecipe(' + r.id + ')">📅 加入计划</button>';
+                    html += '<button class="btn btn-sm btn-secondary" style="color:#ff4d4f;" onclick="deleteRecipe(' + r.id + ')">删除</button></div></div>';
+                }
+            }
+            container.innerHTML = html;
         }
 
         function saveRecipe(e) {
             e.preventDefault();
-            const id = document.getElementById('recipeId').value;
-            const newRecipe = {
+            var id = document.getElementById('recipeId').value;
+            var newRecipe = {
                 id: id ? parseInt(id) : Date.now(),
                 name: document.getElementById('recipeName').value,
                 ingredients: document.getElementById('recipeIngredients').value,
@@ -303,8 +273,9 @@
             };
 
             if (id) {
-                const idx = recipes.findIndex(r => r.id === parseInt(id));
-                recipes[idx] = newRecipe;
+                for (var i = 0; i < recipes.length; i++) {
+                    if (recipes[i].id === parseInt(id)) { recipes[i] = newRecipe; break; }
+                }
             } else {
                 recipes.push(newRecipe);
             }
@@ -313,11 +284,12 @@
             closeModal('recipeModal');
             document.getElementById('recipeForm').reset();
             renderRecipes();
+            renderDailyMeal();
         }
 
         function deleteRecipe(id) {
             if (confirm("确定要删除这个食谱吗？")) {
-                recipes = recipes.filter(r => r.id !== id);
+                recipes = recipes.filter(function(r) { return r.id !== id; });
                 saveData();
                 renderRecipes();
                 renderDailyMeal();
@@ -325,13 +297,24 @@
         }
 
         function openPlanModal(day, meal) {
-            const daySel = document.getElementById('planDaySelect');
-            const recipeSel = document.getElementById('planRecipeSelect');
+            var daySel = document.getElementById('planDaySelect');
+            var recipeSel = document.getElementById('planRecipeSelect');
             
-            daySel.innerHTML = days.map(d => `<option value="${d}" ${d === day ? 'selected' : ''}>${d}</option>`).join('');
-            recipeSel.innerHTML = recipes.map(r => `<option value="${r.id}">${r.name} (${r.age})</option>`).join('');
-            document.getElementById('planMealSelect').value = meal;
+            var dayHtml = '';
+            for (var i = 0; i < days.length; i++) {
+                var d = days[i];
+                dayHtml += '<option value="' + d + '" ' + (d === day ? 'selected' : '') + '>' + d + '</option>';
+            }
+            daySel.innerHTML = dayHtml;
 
+            var recHtml = '';
+            for (var j = 0; j < recipes.length; j++) {
+                var r = recipes[j];
+                recHtml += '<option value="' + r.id + '">' + r.name + ' (' + r.age + ')</option>';
+            }
+            recipeSel.innerHTML = recHtml;
+
+            document.getElementById('planMealSelect').value = meal;
             openModal('planModal');
         }
 
@@ -341,9 +324,9 @@
         }
 
         function savePlan() {
-            const day = document.getElementById('planDaySelect').value;
-            const meal = document.getElementById('planMealSelect').value;
-            const recipeId = parseInt(document.getElementById('planRecipeSelect').value);
+            var day = document.getElementById('planDaySelect').value;
+            var meal = document.getElementById('planMealSelect').value;
+            var recipeId = parseInt(document.getElementById('planRecipeSelect').value);
 
             if (!plans[day]) plans[day] = {};
             plans[day][meal] = recipeId;
@@ -361,7 +344,7 @@
             }
         }
 
-        // 初始化
+        // 页面初始化加载
         renderWeekPills();
         renderRecipes();
     </script>
