@@ -93,12 +93,14 @@
     <main id="planView" class="view active">
         <!-- 备份与飞书多维表格操作栏 -->
         <div class="backup-bar">
-            <span style="font-size:12px; color:#666; font-weight:600;">📊 飞书多维表格：</span>
+            <span style="font-size:12px; color:#666; font-weight:600;">📊 飞书多维表格同步：</span>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="btn btn-sm btn-feishu" id="btnExportCSV">📊 导出 CSV (飞书多维表格)</button>
-                <button class="btn btn-sm btn-outline" id="btnExportData">📤 导出 JSON 备份</button>
-                <button class="btn btn-sm btn-outline" id="btnImportData">📥 导入 JSON</button>
+                <button class="btn btn-sm btn-feishu" id="btnExportCSV">📊 导出 CSV</button>
+                <button class="btn btn-sm btn-feishu" id="btnImportCSV">📥 导入飞书 CSV</button>
+                <button class="btn btn-sm btn-outline" id="btnExportData">📤 JSON 备份</button>
+                <button class="btn btn-sm btn-outline" id="btnImportData">📥 JSON 恢复</button>
                 <input type="file" id="fileInput" accept=".json" style="display:none;">
+                <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
             </div>
         </div>
 
@@ -318,7 +320,7 @@
                                 '排餐计划',
                                 dStr,
                                 meal,
-                                recipe.name + (recipe.category ? ' [' + recipe.category + ']' : ''),
+                                recipe.name,
                                 recipe.ingredients,
                                 vNote ? ('疫苗/特殊事项: ' + vNote) : ''
                             ].map(escapeCSV).join(','));
@@ -341,8 +343,8 @@
                     csvRows.push([
                         '月龄小结',
                         s.stage,
-                        '新解锁: ' + (s.foods || '无'),
-                        '月龄小结与心得',
+                        s.foods || '无',
+                        '小结心得',
                         '-',
                         s.notes
                     ].map(escapeCSV).join(','));
@@ -352,9 +354,108 @@
                 var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = '宝宝辅食通_飞书多维表格数据_' + todayStr + '.csv';
+                a.download = '宝宝辅食通_数据导出_' + todayStr + '.csv';
                 a.click();
             });
+
+            // 📥 导入 CSV (飞书多维表格导出的 CSV)
+            document.getElementById('btnImportCSV').addEventListener('click', function() { document.getElementById('csvFileInput').click(); });
+            document.getElementById('csvFileInput').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        var csvText = evt.target.result;
+                        parseAndImportCSV(csvText);
+                        saveData();
+                        renderWeekPills();
+                        renderRecipes();
+                        renderSummaries();
+                        alert("🎉 飞书 CSV 数据导入成功！");
+                    } catch (err) {
+                        alert("⚠️ CSV 解析失败，请确保格式正确：" + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            function parseCSVRow(text) {
+                var p = '', c = '', r = [];
+                var q = false;
+                for (var i = 0; i < text.length; i++) {
+                    c = text[i];
+                    if (q) {
+                        if (c === '"') {
+                            if (i + 1 < text.length && text[i + 1] === '"') { r.push('"'); i++; }
+                            else { q = false; }
+                        } else { r.push(c); }
+                    } else {
+                        if (c === '"') { q = true; }
+                        else if (c === ',') { r.push(';'); }
+                        else { r.push(c); }
+                    }
+                }
+                return r.join('').split(';').map(function(s) { return s.trim(); });
+            }
+
+            function parseAndImportCSV(csvText) {
+                var lines = csvText.split(/\r\n|\n/);
+                if (lines.length < 2) return;
+
+                var newRecipes = [];
+                var newDatePlans = {};
+                var newSummaries = [];
+
+                for (var i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    var cols = parseCSVRow(lines[i]);
+                    if (cols.length < 6) continue;
+
+                    var type = cols[0];
+                    var col1 = cols[1]; // 日期/阶段
+                    var col2 = cols[2]; // 餐次/分类
+                    var col3 = cols[3]; // 食谱名称/内容
+                    var col4 = cols[4]; // 食材用量
+                    var col5 = cols[5]; // 备注/步骤
+
+                    if (type === '食谱库') {
+                        newRecipes.push({
+                            id: Date.now() + Math.floor(Math.random() * 1000),
+                            name: col3,
+                            category: col2,
+                            ingredients: col4,
+                            steps: col5,
+                            age: col1
+                        });
+                    } else if (type === '月龄小结') {
+                        newSummaries.push({
+                            stage: col1,
+                            foods: col2,
+                            notes: col5
+                        });
+                    } else if (type === '排餐计划') {
+                        var matchedRecipe = recipes.find(function(r) { return r.name === col3; }) ||
+                                           newRecipes.find(function(r) { return r.name === col3; });
+                        var rId = matchedRecipe ? matchedRecipe.id : Date.now();
+                        
+                        if (!matchedRecipe) {
+                            newRecipes.push({ id: rId, name: col3, category: '主食', ingredients: col4, steps: '', age: '6个月' });
+                        }
+
+                        if (!newDatePlans[col1]) newDatePlans[col1] = {};
+                        newDatePlans[col1][col2] = rId;
+
+                        if (col5 && col5.indexOf('疫苗/特殊事项:') !== -1) {
+                            vaccineNotes[col1] = col5.replace('疫苗/特殊事项:', '').trim();
+                        }
+                    }
+                }
+
+                if (newRecipes.length > 0) recipes = newRecipes;
+                if (Object.keys(newDatePlans).length > 0) datePlans = newDatePlans;
+                if (newSummaries.length > 0) summaries = newSummaries;
+            }
 
             function escapeCSV(str) {
                 if (str === null || str === undefined) return '""';
@@ -390,7 +491,7 @@
                             renderWeekPills();
                             renderRecipes();
                             renderSummaries();
-                            alert("🎉 数据恢复成功！");
+                            alert("🎉 JSON 数据恢复成功！");
                         }
                     } catch (err) { alert("⚠️ 格式错误"); }
                 };
