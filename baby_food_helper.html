@@ -60,8 +60,12 @@
         .btn-outline { background: #fff; border: 1px solid #E5E5EA; color: #666; }
         .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; width: auto; }
         
-        .week-selector { display: flex; justify-content: space-between; background: #fff; padding: 10px; border-radius: var(--border-radius); margin-bottom: 12px; box-shadow: var(--shadow); overflow-x: auto; }
-        .day-pill { display: flex; flex-direction: column; align-items: center; padding: 6px 10px; border-radius: 10px; cursor: pointer; font-size: 12px; min-width: 50px; text-align: center; }
+        /* 日历与周切换卡片 */
+        .calendar-card { background: #fff; padding: 12px; border-radius: var(--border-radius); margin-bottom: 12px; box-shadow: var(--shadow); }
+        .calendar-nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #eee; }
+        .date-picker-input { border: 1px solid #E5E5EA; border-radius: 8px; padding: 3px 6px; font-size: 12px; color: var(--dark); outline: none; }
+        .week-selector { display: flex; justify-content: space-between; gap: 4px; overflow-x: auto; }
+        .day-pill { display: flex; flex-direction: column; align-items: center; padding: 6px 8px; border-radius: 10px; cursor: pointer; font-size: 12px; min-width: 44px; text-align: center; flex: 1; }
         .day-pill.active { background: var(--primary); color: #fff; font-weight: bold; }
         .day-pill .date-str { font-size: 10px; opacity: 0.8; margin-top: 2px; }
 
@@ -109,7 +113,20 @@
             </div>
         </div>
 
-        <div class="week-selector" id="weekPills"></div>
+        <!-- 可自由切换日期的日历组件 -->
+        <div class="calendar-card">
+            <div class="calendar-nav-bar">
+                <button class="btn btn-sm btn-outline" id="btnPrevWeek">◀ 上一周</button>
+                <div style="display:flex; align-items:center; gap:4px;">
+                    <span style="font-size:12px; font-weight:600; color:#666;">📅 日期:</span>
+                    <input type="date" id="calendarJumpInput" class="date-picker-input">
+                    <button class="btn btn-sm btn-secondary" id="btnGoToday">今天</button>
+                </div>
+                <button class="btn btn-sm btn-outline" id="btnNextWeek">下一周 ▶</button>
+            </div>
+            <div class="week-selector" id="weekPills"></div>
+        </div>
+
         <div id="vaccineBannerArea"></div>
         <div id="dailyMealContent"></div>
     </main>
@@ -186,7 +203,6 @@
             <h3 style="margin-bottom:14px;">💉 标注疫苗/特殊事项</h3>
             <div class="form-group">
                 <label>选择日期</label>
-                <!-- 修改点：将 readonly 文本框改为真正的 date 选择器 -->
                 <input type="date" id="vaccineDateInput">
             </div>
             <div class="form-group">
@@ -303,12 +319,11 @@
         // ⚠️ 请在此处替换你的 Supabase 配置参数
         // ==========================================
         const SUPABASE_URL = 'https://iqjjsjtdnwynqczhpsvy.supabase.co'; 
-        const SUPABASE_KEY = 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v'; // 👈 别忘了这里填你的 anon key！
+        const SUPABASE_KEY = 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v';
         
         var supabaseClient = null;
 
         document.addEventListener("DOMContentLoaded", function() {
-            // 初始化 Supabase
             if (typeof supabase !== 'undefined' && SUPABASE_KEY) {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
@@ -339,7 +354,6 @@
                 if (el) { el.innerText = text; el.style.color = color || '#4ECDC4'; }
             }
 
-            // 保存数据到 Supabase 云端
             async function saveData() {
                 localStorage.setItem('baby_user_sync_key', userId);
                 
@@ -358,7 +372,7 @@
                     if (error) {
                         console.error('Supabase 保存失败错误详情:', error);
                         updateSyncStatus('❌ 保存失败', '#ff4d4f');
-                        alert("⚠️ 云端保存失败！错误原因：" + error.message + "\n提示：请检查 Supabase 表中的 user_id 是否设置为主键，以及 RLS 权限是否关闭。");
+                        alert("⚠️ 云端保存失败！错误原因：" + error.message);
                     } else {
                         updateSyncStatus('✅ 已同步云端', '#4ECDC4');
                     }
@@ -368,7 +382,6 @@
                 }
             }
 
-            // 从 Supabase 加载数据
             async function loadDataFromCloud() {
                 if (!supabaseClient) {
                     updateSyncStatus('⚠️ 未配置Key', '#ff4d4f');
@@ -394,7 +407,6 @@
                         recipes = cData.recipes || [];
                         datePlans = cData.datePlans || {};
                         
-                        // 兼容处理：旧数据中如果 meal 的值不是数组则转为数组
                         Object.keys(datePlans).forEach(function(d) {
                             Object.keys(datePlans[d]).forEach(function(m) {
                                 if (!Array.isArray(datePlans[d][m])) {
@@ -408,7 +420,7 @@
                         updateSyncStatus('✅ 云端就绪', '#4ECDC4');
                     } else {
                         updateSyncStatus('🆕 建立新账号数据', '#4ECDC4');
-                        saveData(); // 初始化新账号
+                        saveData();
                     }
                 } catch (e) {
                     console.error('Load error:', e);
@@ -587,7 +599,6 @@
                         if (data) {
                             babyBirth = data.babyBirth || ''; recipes = data.recipes || []; datePlans = data.datePlans || {}; vaccineNotes = data.vaccineNotes || {}; summaries = data.summaries || [];
                             
-                            // 兼容处理：确保 JSON 导入后 datePlans 结构合法
                             Object.keys(datePlans).forEach(function(d) {
                                 Object.keys(datePlans[d]).forEach(function(m) {
                                     if (!Array.isArray(datePlans[d][m])) {
@@ -637,14 +648,27 @@
             document.getElementById('btnCancelPlan').addEventListener('click', function() { document.getElementById('planModal').classList.remove('active'); });
             document.getElementById('btnCancelVaccine').addEventListener('click', function() { document.getElementById('vaccineModal').classList.remove('active'); });
 
+            // 📅 渲染周日历面板（支持自由选日期、切换上一周/下一周）
             function renderWeekPills() {
                 var container = document.getElementById('weekPills'); container.innerHTML = '';
-                var curr = new Date(currentSelectedDate);
-                var first = curr.getDate() - (curr.getDay() === 0 ? 6 : curr.getDay() - 1);
+                var picker = document.getElementById('calendarJumpInput');
+                picker.value = currentSelectedDate;
+
+                // 计算当前选中日期所在周的周一
+                var parts = currentSelectedDate.split('-');
+                var curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                var dayOfWeek = curr.getDay();
+                var diffToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+                
+                var mondayDate = new Date(curr);
+                mondayDate.setDate(curr.getDate() - diffToMonday);
+
                 var weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
                 for (var i = 0; i < 7; i++) {
-                    var next = new Date(curr.setDate(first + i));
+                    var next = new Date(mondayDate);
+                    next.setDate(mondayDate.getDate() + i);
+                    
                     var dateStr = getFormattedDate(next);
                     var dayLabel = weekDays[i];
                     var shortDateStr = (next.getMonth() + 1) + '.' + next.getDate();
@@ -663,13 +687,42 @@
                 renderDailyMeal();
             }
 
+            // 📅 日历控制事件绑定
+            document.getElementById('btnPrevWeek').addEventListener('click', function() {
+                var parts = currentSelectedDate.split('-');
+                var curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                curr.setDate(curr.getDate() - 7);
+                currentSelectedDate = getFormattedDate(curr);
+                renderWeekPills();
+            });
+
+            document.getElementById('btnNextWeek').addEventListener('click', function() {
+                var parts = currentSelectedDate.split('-');
+                var curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                curr.setDate(curr.getDate() + 7);
+                currentSelectedDate = getFormattedDate(curr);
+                renderWeekPills();
+            });
+
+            document.getElementById('btnGoToday').addEventListener('click', function() {
+                currentSelectedDate = todayStr;
+                renderWeekPills();
+            });
+
+            document.getElementById('calendarJumpInput').addEventListener('change', function(e) {
+                if (e.target.value) {
+                    currentSelectedDate = e.target.value;
+                    renderWeekPills();
+                }
+            });
+
             function renderDailyMeal() {
                 var container = document.getElementById('dailyMealContent'); container.innerHTML = '';
                 var vBannerArea = document.getElementById('vaccineBannerArea');
                 var vNote = vaccineNotes[currentSelectedDate];
                 
                 vBannerArea.innerHTML = '<div class="vaccine-banner">' +
-                    '<span>📅 当前日期：<b>' + currentSelectedDate + '</b> ' + (vNote ? ' | 💉 备注：<b>' + vNote + '</b>' : '') + '</span>' +
+                    '<span>📅 当前查看：<b>' + currentSelectedDate + '</b> ' + (vNote ? ' | 💉 事项：<b>' + vNote + '</b>' : '') + '</span>' +
                     '<button class="btn btn-sm btn-warning" id="btnEditVaccine">' + (vNote ? '修改标记' : '+ 标记疫苗/事项') + '</button>' +
                     '</div>';
 
@@ -728,7 +781,7 @@
                 });
             }
 
-            // 修改点：保存标注时按表单选择的日期保存，并更新视图
+            // 修改点：保存疫苗事项后，不动主界面的 currentSelectedDate
             document.getElementById('btnSaveVaccine').addEventListener('click', function() {
                 var dStr = document.getElementById('vaccineDateInput').value;
                 var note = document.getElementById('vaccineNoteInput').value.trim();
@@ -744,10 +797,9 @@
                     delete vaccineNotes[dStr];
                 }
                 
-                // 将页面切换到当前选择标记的日期
-                currentSelectedDate = dStr;
                 saveData(); 
                 document.getElementById('vaccineModal').classList.remove('active'); 
+                // 刷新日历与界面（保持在用户当前查看的日期）
                 renderWeekPills();
             });
 
