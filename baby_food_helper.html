@@ -84,7 +84,7 @@
 
     <header>
         <div class="header-top">
-            <h1>👶 宝宝辅食通 <span class="sync-status" id="syncStatus">☁️ 云端同步中</span></h1>
+            <h1>👶 宝宝辅食通 <span class="sync-status" id="syncStatus">☁️ 准备就绪</span></h1>
             <div>
                 <button class="btn btn-sm btn-outline" id="btnSyncKey">🔑 密钥</button>
                 <button class="btn btn-sm" id="btnOpenAddRecipe">+ 记食谱</button>
@@ -98,7 +98,7 @@
     <!-- 1. 辅食计划页 -->
     <main id="planView" class="view active">
         <div class="backup-bar">
-            <span style="font-size:12px; color:#666; font-weight:600;">📊 飞书多维表格：</span>
+            <span style="font-size:12px; color:#666; font-weight:600;">📊 数据导入与导出：</span>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
                 <button class="btn btn-sm btn-feishu" id="btnExportCSV">📊 导出 CSV</button>
                 <button class="btn btn-sm btn-feishu" id="btnImportCSV">📥 导入 CSV</button>
@@ -153,14 +153,14 @@
     <div class="modal" id="syncKeyModal">
         <div class="modal-content">
             <h3 style="margin-bottom:10px;">🔑 设置同步密钥 (家庭暗号)</h3>
-            <p style="font-size:12px; color:#666; margin-bottom:14px;">在电脑和手机上输入相同的密钥，即可跨设备实时同步所有食谱与计划！</p>
+            <p style="font-size:12px; color:#666; margin-bottom:14px;">在电脑和手机上输入相同的密钥，点击“绑定并拉取数据”即可同步！</p>
             <div class="form-group">
                 <label>专属同步密钥</label>
-                <input type="text" id="userSyncKeyInput" placeholder="例如: mybaby2026">
+                <input type="text" id="userSyncKeyInput" placeholder="例如: myfamily2026">
             </div>
             <div style="display:flex; gap:10px;">
                 <button type="button" class="btn btn-secondary" id="btnCancelSyncKey">取消</button>
-                <button type="button" class="btn" id="btnSaveSyncKey">确定并加载数据</button>
+                <button type="button" class="btn" id="btnSaveSyncKey">确定并拉取数据</button>
             </div>
         </div>
     </div>
@@ -302,12 +302,16 @@
         // ⚠️ 请在此处替换你的 Supabase 配置参数
         // ==========================================
         const SUPABASE_URL = 'https://iqjjsjtdnwynqczhpsvy.supabase.co'; 
-        const SUPABASE_KEY = 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v';
+        const SUPABASE_KEY = 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v'; // 👈 别忘了这里填你的 anon key！
         
-        // 初始化 Supabase 客户端
-        const supabaseClient = (SUPABASE_URL !== 'https://iqjjsjtdnwynqczhpsvy.supabase.co') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        var supabaseClient = null;
 
         document.addEventListener("DOMContentLoaded", function() {
+            // 初始化 Supabase
+            if (typeof supabase !== 'undefined' && SUPABASE_KEY !== 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v') {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
             var userId = localStorage.getItem('baby_user_sync_key') || 'default_family';
             
             var babyBirth = '';
@@ -319,6 +323,13 @@
             var vaccineNotes = {};
             var summaries = [];
 
+            function getFormattedDate(dateObj) {
+                var y = dateObj.getFullYear();
+                var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                var d = String(dateObj.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+
             var todayStr = getFormattedDate(new Date());
             var currentSelectedDate = todayStr;
 
@@ -327,12 +338,12 @@
                 if (el) { el.innerText = text; el.style.color = color || '#4ECDC4'; }
             }
 
-            // 保存数据（同步到 Supabase 云端数据库）
+            // 保存数据到 Supabase 云端
             async function saveData() {
                 localStorage.setItem('baby_user_sync_key', userId);
                 
                 if (!supabaseClient) {
-                    updateSyncStatus('⚠️ 未配置Supabase', '#ff4d4f');
+                    updateSyncStatus('⚠️ 未配置Key', '#ff4d4f');
                     return;
                 }
 
@@ -342,35 +353,42 @@
                 try {
                     const { data, error } = await supabaseClient
                         .from('baby_food_data')
-                        .upsert({ user_id: userId, data_json: payload }, { onConflict: 'user_id' });
+                        .upsert({ user_id: userId, data_json: payload });
 
                     if (error) {
-                        console.error('Supabase save error:', error);
-                        updateSyncStatus('❌ 同步失败', '#ff4d4f');
+                        console.error('Supabase 保存失败错误详情:', error);
+                        updateSyncStatus('❌ 保存失败', '#ff4d4f');
+                        alert("⚠️ 云端保存失败！错误原因：" + error.message + "\n提示：请检查 Supabase 表中的 user_id 是否设置为主键，以及 RLS 权限是否关闭。");
                     } else {
                         updateSyncStatus('✅ 已同步云端', '#4ECDC4');
                     }
                 } catch (e) {
+                    console.error('Save error:', e);
                     updateSyncStatus('❌ 网络错误', '#ff4d4f');
                 }
             }
 
-            // 从 Supabase 云端加载数据
+            // 从 Supabase 加载数据
             async function loadDataFromCloud() {
                 if (!supabaseClient) {
-                    updateSyncStatus('⚠️ 未配置Supabase', '#ff4d4f');
+                    updateSyncStatus('⚠️ 未配置Key', '#ff4d4f');
+                    refreshUI();
                     return;
                 }
 
-                updateSyncStatus('🔄 加载数据...', '#D97706');
+                updateSyncStatus('🔄 加载中...', '#D97706');
                 try {
                     const { data, error } = await supabaseClient
                         .from('baby_food_data')
                         .select('data_json')
                         .eq('user_id', userId)
-                        .single();
+                        .maybeSingle();
 
-                    if (data && data.data_json) {
+                    if (error) {
+                        console.error('Supabase 读取失败:', error);
+                        updateSyncStatus('❌ 读取报错', '#ff4d4f');
+                        alert("⚠️ 从云端获取数据失败：" + error.message);
+                    } else if (data && data.data_json) {
                         var cData = data.data_json;
                         babyBirth = cData.babyBirth || '';
                         recipes = cData.recipes || [];
@@ -379,24 +397,22 @@
                         summaries = cData.summaries || [];
                         updateSyncStatus('✅ 云端就绪', '#4ECDC4');
                     } else {
-                        updateSyncStatus('🆕 新密钥初始化', '#4ECDC4');
-                        saveData();
+                        updateSyncStatus('🆕 建立新账号数据', '#4ECDC4');
+                        saveData(); // 初始化新账号
                     }
                 } catch (e) {
-                    updateSyncStatus('⚠️ 使用本地初始数据', '#D97706');
+                    console.error('Load error:', e);
+                    updateSyncStatus('⚠️ 加载异常', '#D97706');
                 }
                 
+                refreshUI();
+            }
+
+            function refreshUI() {
                 updateBabyAgeDisplay();
                 renderWeekPills();
                 renderRecipes();
                 renderSummaries();
-            }
-
-            function getFormattedDate(dateObj) {
-                var y = dateObj.getFullYear();
-                var m = String(dateObj.getMonth() + 1).padStart(2, '0');
-                var d = String(dateObj.getDate()).padStart(2, '0');
-                return y + '-' + m + '-' + d;
             }
 
             // 🔑 密钥设置弹窗
@@ -462,7 +478,7 @@
                 return '"' + String(str).replace(/"/g, '""') + '"';
             }
 
-            // 📥 导入飞书 CSV
+            // 📥 导入 CSV
             document.getElementById('btnImportCSV').addEventListener('click', function() { document.getElementById('csvFileInput').click(); });
             document.getElementById('csvFileInput').addEventListener('change', function(e) {
                 var file = e.target.files[0];
@@ -516,8 +532,8 @@
                 if (newSummaries.length > 0) summaries = newSummaries;
 
                 saveData();
-                renderWeekPills(); renderRecipes(); renderSummaries();
-                alert("🎉 CSV 导入并同步云端成功！");
+                refreshUI();
+                alert("🎉 CSV 导入并同步成功！");
             }
 
             function parseCSVLines(text) {
@@ -555,8 +571,8 @@
                         var data = JSON.parse(evt.target.result);
                         if (data) {
                             babyBirth = data.babyBirth || ''; recipes = data.recipes || []; datePlans = data.datePlans || {}; vaccineNotes = data.vaccineNotes || {}; summaries = data.summaries || [];
-                            saveData(); updateBabyAgeDisplay(); renderWeekPills(); renderRecipes(); renderSummaries();
-                            alert("🎉 数据恢复并同步云端成功！");
+                            saveData(); refreshUI();
+                            alert("🎉 数据恢复并同步成功！");
                         }
                     } catch (err) { alert("⚠️ 格式错误"); }
                 };
