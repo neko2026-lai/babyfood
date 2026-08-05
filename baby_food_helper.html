@@ -308,9 +308,9 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             // 初始化 Supabase
-            if (typeof supabase !== 'undefined' && SUPABASE_KEY !== 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v') {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
+            if (typeof supabase !== 'undefined' && SUPABASE_KEY) {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
 
             var userId = localStorage.getItem('baby_user_sync_key') || 'default_family';
             
