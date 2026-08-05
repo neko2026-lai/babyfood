@@ -88,13 +88,13 @@
 
     <!-- 1. 辅食计划页 -->
     <main id="planView" class="view active">
-        <!-- 备份与复制飞书格式操作栏 -->
+        <!-- 备份与飞书多维表格操作栏 -->
         <div class="backup-bar">
-            <span style="font-size:12px; color:#666; font-weight:600;">⚙️ 飞书与备份：</span>
+            <span style="font-size:12px; color:#666; font-weight:600;">📊 飞书多维表格：</span>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="btn btn-sm btn-feishu" id="btnCopyFeishu">📋 复制飞书格式</button>
-                <button class="btn btn-sm btn-outline" id="btnExportData">📤 导出 JSON</button>
-                <button class="btn btn-sm btn-outline" id="btnImportData">📥 导入</button>
+                <button class="btn btn-sm btn-feishu" id="btnExportCSV">📊 导出 CSV (飞书多维表格)</button>
+                <button class="btn btn-sm btn-outline" id="btnExportData">📤 导出 JSON 备份</button>
+                <button class="btn btn-sm btn-outline" id="btnImportData">📥 导入 JSON</button>
                 <input type="file" id="fileInput" accept=".json" style="display:none;">
             </div>
         </div>
@@ -288,58 +288,71 @@
                 return y + '-' + m + '-' + d;
             }
 
-            // 📋 复制飞书表格格式
-            document.getElementById('btnCopyFeishu').addEventListener('click', function() {
-                var babyAgeText = document.getElementById('babyAgeDisplay').innerText;
-                var markdownText = "# 👶 宝宝辅食记录 - 飞书导出\n";
-                markdownText += "**当前月龄**：" + babyAgeText + "\n";
-                markdownText += "**导出日期**：" + todayStr + "\n\n";
+            // 📊 导出适应飞书多维表格的 CSV
+            document.getElementById('btnExportCSV').addEventListener('click', function() {
+                var csvRows = [];
+                // CSV 表头
+                csvRows.push(['记录类型', '日期/阶段', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
 
-                markdownText += "## 📅 今日排餐计划 (" + currentSelectedDate + ")\n";
-                var dayPlan = datePlans[currentSelectedDate] || {};
-                var vaccine = vaccineNotes[currentSelectedDate] ? " (💉 特殊/疫苗标记: " + vaccineNotes[currentSelectedDate] + ")" : "";
-                markdownText += "> 备注: " + (vaccine || "无特殊事项") + "\n\n";
-                
-                markdownText += "| 餐次 | 食谱名称 | 食材与用量 | 适合月龄 |\n";
-                markdownText += "| --- | --- | --- | --- |\n";
-
-                var meals = ["早餐", "午餐", "下午加餐", "晚餐"];
-                var hasMeal = false;
-                meals.forEach(function(m) {
-                    var rId = dayPlan[m];
-                    var recipe = recipes.find(function(r) { return r.id === rId; });
-                    if (recipe) {
-                        hasMeal = true;
-                        markdownText += "| " + m + " | " + recipe.name + " | " + recipe.ingredients + " | " + recipe.age + " |\n";
-                    }
-                });
-                if (!hasMeal) markdownText += "| - | 暂无今日排餐 | - | - |\n";
-
-                markdownText += "\n## 📖 食谱灵感库汇总\n";
-                markdownText += "| 食谱名称 | 适合月龄 | 食材用量 | 制作步骤 |\n";
-                markdownText += "| --- | --- | --- | --- |\n";
-                recipes.forEach(function(r) {
-                    markdownText += "| " + r.name + " | " + r.age + " | " + r.ingredients + " | " + r.steps.replace(/\n/g, '<br>') + " |\n";
-                });
-
-                if (summaries.length > 0) {
-                    markdownText += "\n## 📋 月龄小结\n";
-                    summaries.forEach(function(s) {
-                        markdownText += "### " + s.stage + "\n";
-                        markdownText += "* **解锁新食材**：" + (s.foods || '无') + "\n";
-                        markdownText += "* **心得与过敏记录**：" + s.notes + "\n\n";
+                // 1. 导出排餐计划
+                Object.keys(datePlans).forEach(function(dStr) {
+                    var dayPlan = datePlans[dStr];
+                    var vNote = vaccineNotes[dStr] || '';
+                    Object.keys(dayPlan).forEach(function(meal) {
+                        var rId = dayPlan[meal];
+                        var recipe = recipes.find(function(r) { return r.id === rId; });
+                        if (recipe) {
+                            csvRows.push([
+                                '排餐计划',
+                                dStr,
+                                meal,
+                                recipe.name,
+                                recipe.ingredients,
+                                vNote ? ('疫苗/特殊事项: ' + vNote) : ''
+                            ].map(escapeCSV).join(','));
+                        }
                     });
-                }
-
-                // 写入剪贴板
-                navigator.clipboard.writeText(markdownText).then(function() {
-                    alert("🎉 飞书格式已复制到剪贴板！\n\n请直接打开【飞书文档】，在页面按 Ctrl+V 粘贴，就能自动转为排版优雅的表格和卡片啦！");
-                }).catch(function(err) {
-                    alert("⚠️ 复制失败，请重试");
                 });
+
+                // 2. 导出食谱库
+                recipes.forEach(function(r) {
+                    csvRows.push([
+                        '食谱库',
+                        r.age,
+                        '-',
+                        r.name,
+                        r.ingredients,
+                        r.steps
+                    ].map(escapeCSV).join(','));
+                });
+
+                // 3. 导出月龄小结
+                summaries.forEach(function(s) {
+                    csvRows.push([
+                        '月龄小结',
+                        s.stage,
+                        s.foods || '无',
+                        '月龄小结与心得',
+                        '-',
+                        s.notes
+                    ].map(escapeCSV).join(','));
+                });
+
+                var csvContent = "\uFEFF" + csvRows.join('\n'); // 增加 UTF-8 BOM，防止 Excel / 飞书乱码
+                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = '宝宝辅食通_飞书多维表格数据_' + todayStr + '.csv';
+                a.click();
             });
 
-            // 导出/导入 JSON
+            function escapeCSV(str) {
+                if (str === null || str === undefined) return '""';
+                var s = String(str).replace(/"/g, '""');
+                return '"' + s + '"';
+            }
+
+            // 导出/导入 JSON 格式
             document.getElementById('btnExportData').addEventListener('click', function() {
                 var backupData = { babyBirth: babyBirth, recipes: recipes, datePlans: datePlans, vaccineNotes: vaccineNotes, summaries: summaries };
                 var blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
