@@ -54,7 +54,8 @@
 
         .ingredients-tag { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
         .tag { background: #F0F2F5; color: #555; font-size: 12px; padding: 3px 8px; border-radius: 6px; }
-        .steps-text { font-size: 13px; color: #666; line-height: 1.5; white-space: pre-line; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
+        .steps-text { font-size: 13px; color: #666; line-height: 1.5; white-space: pre-line; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; display: none; }
+        .steps-toggle-btn { background: none; border: none; color: #888; font-size: 12px; padding: 4px 0; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
         
         .btn { background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 10px 16px; font-size: 14px; font-weight: 600; width: 100%; cursor: pointer; }
         .btn-secondary { background: var(--secondary-light); color: var(--secondary); }
@@ -752,7 +753,7 @@
                 var container = document.getElementById('dailyMealContent'); container.innerHTML = '';
                 var vBannerArea = document.getElementById('vaccineBannerArea');
                 
-                // 需求：过滤选中日期及之后的事项，并按日期升序排序
+                // 过滤选中日期及之后的事项，并按日期升序排序
                 var upcomingVaccines = vaccineList.filter(v => v.date >= currentSelectedDate)
                                                   .sort((a,b) => a.date.localeCompare(b.date));
 
@@ -1055,10 +1056,26 @@
 
                     if (matchQuery && matchCat) {
                         var card = document.createElement('div'); card.className = 'card';
+                        
+                        var stepsHtml = r.steps ? 
+                            '<button class="steps-toggle-btn">📖 查看制作步骤 ▾</button>' +
+                            '<div class="steps-text">' + r.steps + '</div>' : '';
+
                         card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div>' +
                                          '<div class="badge-group">' + (r.category ? '<span class="badge-cat">' + r.category + '</span>' : '') + '</div></div>' +
                                          '<div class="ingredients-tag">' + r.ingredients.split(',').map(i => '<span class="tag">🥦 ' + i.trim() + '</span>').join('') + '</div>' +
-                                         '<div class="steps-text">' + r.steps + '</div>';
+                                         stepsHtml;
+
+                        // 绑定折叠/展开事件
+                        if (r.steps) {
+                            var toggleBtn = card.querySelector('.steps-toggle-btn');
+                            var stepsContent = card.querySelector('.steps-text');
+                            toggleBtn.addEventListener('click', function() {
+                                var isHidden = stepsContent.style.display === '' || stepsContent.style.display === 'none';
+                                stepsContent.style.display = isHidden ? 'block' : 'none';
+                                toggleBtn.innerHTML = isHidden ? '📖 收起制作步骤 ▴' : '📖 查看制作步骤 ▾';
+                            });
+                        }
 
                         var btnGroup = document.createElement('div'); btnGroup.style.cssText = 'display:flex; gap:8px; margin-top:12px;';
 
@@ -1124,7 +1141,7 @@
                     var card = document.createElement('div'); card.className = 'card';
                     card.innerHTML = '<div class="card-header"><div class="card-title">' + s.stage + '</div></div>' +
                                      '<div style="font-size:13px; color:#555; margin-bottom:6px;"><b>🥦 新解锁食材：</b>' + (s.foods || '无') + '</div>' +
-                                     '<div class="steps-text"><b>📝 总结与心得：</b>\n' + s.notes + '</div>';
+                                     '<div style="font-size:13px; color:#666; line-height:1.5; white-space:pre-line; border-top:1px dashed #eee; padding-top:8px;"><b>📝 总结与心得：</b>\n' + s.notes + '</div>';
 
                     var delBtn = document.createElement('button'); delBtn.className = 'btn btn-sm btn-secondary'; delBtn.style.cssText = 'margin-top:10px; color:#ff4d4f;'; delBtn.innerText = '删除小结';
                     delBtn.addEventListener('click', function() {
