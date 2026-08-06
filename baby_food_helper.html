@@ -6,7 +6,7 @@
     <title>宝宝辅食通 (Supabase云同步版)</title>
     <!-- 引入 Supabase 官方 JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   const SUPABASE_URL = 'https://iqjjsjtdnwynqczhpsvy.supabase.co'; 
+ const SUPABASE_URL = 'https://iqjjsjtdnwynqczhpsvy.supabase.co'; 
 const SUPABASE_KEY = 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v';
 
 var supabaseClient = null;
@@ -660,6 +660,657 @@ document.addEventListener("DOMContentLoaded", function() {
     // 初始化加载数据
     loadDataFromCloud();
 });
+
+    <script>
+        const SUPABASE_URL = 'https://iqjjsjtdnwynqczhpsvy.supabase.co'; 
+        const SUPABASE_KEY = 'sb_publishable_uDDODisk3Mn6KArPRgHvqA_rPYZRq4v';
+        
+        var supabaseClient = null;
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof supabase !== 'undefined' && SUPABASE_KEY) {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            var userId = localStorage.getItem('baby_user_sync_key') || 'default_family';
+            
+            var babyBirth = '';
+            var recipes = [
+                { id: 1, name: "胡萝卜猪肝泥", category: "肉", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥" },
+                { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入" }
+            ];
+            var datePlans = {};
+            var vaccineNotes = {};
+            var summaries = [];
+
+            function getFormattedDate(dateObj) {
+                var y = dateObj.getFullYear();
+                var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                var d = String(dateObj.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+
+            var todayStr = getFormattedDate(new Date());
+            var currentSelectedDate = todayStr;
+
+            function updateSyncStatus(text, color) {
+                var el = document.getElementById('syncStatus');
+                if (el) { el.innerText = text; el.style.color = color || '#4ECDC4'; }
+            }
+
+            async function saveData() {
+                localStorage.setItem('baby_user_sync_key', userId);
+                
+                if (!supabaseClient) {
+                    updateSyncStatus('⚠️ 未配置Key', '#ff4d4f');
+                    return;
+                }
+
+                updateSyncStatus('☁️ 保存中...', '#D97706');
+                const payload = { babyBirth, recipes, datePlans, vaccineNotes, summaries };
+
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('baby_food_data')
+                        .upsert({ user_id: userId, data_json: payload }, { onConflict: 'user_id' });
+                    if (error) {
+                        console.error('Supabase 保存失败错误详情:', error);
+                        updateSyncStatus('❌ 保存失败', '#ff4d4f');
+                        alert("⚠️ 云端保存失败！错误原因：" + error.message);
+                    } else {
+                        updateSyncStatus('✅ 已同步云端', '#4ECDC4');
+                    }
+                } catch (e) {
+                    console.error('Save error:', e);
+                    updateSyncStatus('❌ 网络错误', '#ff4d4f');
+                }
+            }
+
+            async function loadDataFromCloud() {
+                if (!supabaseClient) {
+                    updateSyncStatus('⚠️ 未配置Key', '#ff4d4f');
+                    refreshUI();
+                    return;
+                }
+
+                updateSyncStatus('🔄 加载中...', '#D97706');
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('baby_food_data')
+                        .select('data_json')
+                        .eq('user_id', userId)
+                        .maybeSingle();
+
+                    if (error) {
+                        console.error('Supabase 读取失败:', error);
+                        updateSyncStatus('❌ 读取报错', '#ff4d4f');
+                        alert("⚠️ 从云端获取数据失败：" + error.message);
+                    } else if (data && data.data_json) {
+                        var cData = data.data_json;
+                        babyBirth = cData.babyBirth || '';
+                        recipes = cData.recipes || [];
+                        datePlans = cData.datePlans || {};
+                        
+                        Object.keys(datePlans).forEach(function(d) {
+                            Object.keys(datePlans[d]).forEach(function(m) {
+                                if (!Array.isArray(datePlans[d][m])) {
+                                    datePlans[d][m] = datePlans[d][m] ? [datePlans[d][m]] : [];
+                                }
+                            });
+                        });
+
+                        vaccineNotes = cData.vaccineNotes || {};
+                        summaries = cData.summaries || [];
+                        updateSyncStatus('✅ 云端就绪', '#4ECDC4');
+                    } else {
+                        updateSyncStatus('🆕 建立新账号数据', '#4ECDC4');
+                        saveData();
+                    }
+                } catch (e) {
+                    console.error('Load error:', e);
+                    updateSyncStatus('⚠️ 加载异常', '#D97706');
+                }
+                
+                refreshUI();
+            }
+
+            function refreshUI() {
+                updateBabyAgeDisplay();
+                renderWeekPills();
+                renderRecipes();
+                renderSummaries();
+            }
+
+            // 🔑 密钥设置弹窗
+            document.getElementById('btnSyncKey').addEventListener('click', function() {
+                document.getElementById('userSyncKeyInput').value = userId;
+                document.getElementById('syncKeyModal').classList.add('active');
+            });
+            document.getElementById('btnCancelSyncKey').addEventListener('click', function() {
+                document.getElementById('syncKeyModal').classList.remove('active');
+            });
+            document.getElementById('btnSaveSyncKey').addEventListener('click', function() {
+                var val = document.getElementById('userSyncKeyInput').value.trim();
+                if (val) {
+                    userId = val;
+                    localStorage.setItem('baby_user_sync_key', userId);
+                    document.getElementById('syncKeyModal').classList.remove('active');
+                    loadDataFromCloud();
+                }
+            });
+
+            // 📊 导出 CSV
+            document.getElementById('btnExportCSV').addEventListener('click', function() {
+                var csvRows = [];
+                csvRows.push(['记录类型', '日期/分类', '餐次/新食材', '食谱/内容', '食材用量', '备注/步骤'].map(escapeCSV).join(','));
+
+                Object.keys(datePlans).forEach(function(dStr) {
+                    var dayPlan = datePlans[dStr];
+                    var vNote = vaccineNotes[dStr] || '';
+                    Object.keys(dayPlan).forEach(function(meal) {
+                        var rIds = dayPlan[meal];
+                        if (Array.isArray(rIds)) {
+                            rIds.forEach(function(rId) {
+                                var recipe = recipes.find(function(r) { return r.id === rId; });
+                                if (recipe) {
+                                    csvRows.push([
+                                        '排餐计划',
+                                        dStr,
+                                        meal,
+                                        recipe.name,
+                                        recipe.ingredients,
+                                        vNote ? ('疫苗/特殊事项: ' + vNote) : ''
+                                    ].map(escapeCSV).join(','));
+                                }
+                            });
+                        }
+                    });
+                });
+
+                recipes.forEach(function(r) {
+                    csvRows.push(['食谱库', r.category || '未分类', '-', r.name, r.ingredients, r.steps].map(escapeCSV).join(','));
+                });
+
+                summaries.forEach(function(s) {
+                    csvRows.push(['月龄小结', s.stage, s.foods || '无', '月龄小结与心得', '-', s.notes].map(escapeCSV).join(','));
+                });
+
+                var csvContent = "\uFEFF" + csvRows.join('\n');
+                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = '宝宝辅食通_数据_' + todayStr + '.csv';
+                a.click();
+            });
+
+            function escapeCSV(str) {
+                if (str === null || str === undefined) return '""';
+                return '"' + String(str).replace(/"/g, '""') + '"';
+            }
+
+            // 📥 导入 CSV
+            document.getElementById('btnImportCSV').addEventListener('click', function() { document.getElementById('csvFileInput').click(); });
+            document.getElementById('csvFileInput').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    try { parseCSVAndImport(evt.target.result); } catch (err) { alert("⚠️ CSV解析失败！"); }
+                };
+                reader.readAsText(file, 'utf-8');
+            });
+
+            function parseCSVAndImport(csvText) {
+                var lines = parseCSVLines(csvText);
+                if (lines.length <= 1) return;
+                
+                var newRecipes = [];
+                var newDatePlans = {};
+                var newVaccines = {};
+                var newSummaries = [];
+
+                for (var i = 1; i < lines.length; i++) {
+                    var row = lines[i];
+                    if (row.length < 6) continue;
+                    var type = row[0].trim();
+                    var col1 = row[1].trim(); var col2 = row[2].trim(); var col3 = row[3].trim(); var col4 = row[4].trim(); var col5 = row[5].trim();
+
+                    if (type === '食谱库') {
+                        newRecipes.push({ id: Date.now() + Math.floor(Math.random() * 10000), name: col3, category: col1 === '-' ? '主食' : col1, ingredients: col4, steps: col5 });
+                    } else if (type === '月龄小结') {
+                        newSummaries.push({ stage: col1, foods: col2 === '无' ? '' : col2, notes: col5 });
+                    } else if (type === '排餐计划') {
+                        var dStr = col1; var meal = col2; var recipeName = col3;
+                        var existingRecipe = newRecipes.find(r => r.name === recipeName) || recipes.find(r => r.name === recipeName);
+                        var rId = existingRecipe ? existingRecipe.id : null;
+                        if (!rId) {
+                            rId = Date.now() + Math.floor(Math.random() * 10000);
+                            newRecipes.push({ id: rId, name: recipeName, category: '主食', ingredients: col4, steps: '' });
+                        }
+                        if (!newDatePlans[dStr]) newDatePlans[dStr] = {};
+                        if (!newDatePlans[dStr][meal]) newDatePlans[dStr][meal] = [];
+                        newDatePlans[dStr][meal].push(rId);
+
+                        if (col5 && col5.indexOf('疫苗/特殊事项: ') !== -1) {
+                            newVaccines[dStr] = col5.replace('疫苗/特殊事项: ', '');
+                        }
+                    }
+                }
+
+                if (newRecipes.length > 0) recipes = newRecipes;
+                if (Object.keys(newDatePlans).length > 0) datePlans = newDatePlans;
+                if (Object.keys(newVaccines).length > 0) vaccineNotes = newVaccines;
+                if (newSummaries.length > 0) summaries = newSummaries;
+
+                saveData();
+                refreshUI();
+                alert("🎉 CSV 导入并同步成功！");
+            }
+
+            function parseCSVLines(text) {
+                var result = [], row = [], cur = '', inQuotes = false;
+                for (var i = 0; i < text.length; i++) {
+                    var c = text[i], next = text[i+1];
+                    if (c === '"') {
+                        if (inQuotes && next === '"') { cur += '"'; i++; } else { inQuotes = !inQuotes; }
+                    } else if (c === ',' && !inQuotes) {
+                        row.push(cur); cur = '';
+                    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                        if (c === '\r' && next === '\n') { i++; }
+                        row.push(cur); cur = '';
+                        if (row.length > 1 || row[0] !== '') result.push(row);
+                        row = [];
+                    } else { cur += c; }
+                }
+                if (cur || row.length > 0) { row.push(cur); result.push(row); }
+                return result;
+            }
+
+            // 导出/导入 JSON
+            document.getElementById('btnExportData').addEventListener('click', function() {
+                var backupData = { babyBirth, recipes, datePlans, vaccineNotes, summaries };
+                var blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '辅食通备份_' + todayStr + '.json'; a.click();
+            });
+
+            document.getElementById('btnImportData').addEventListener('click', function() { document.getElementById('fileInput').click(); });
+            document.getElementById('fileInput').addEventListener('change', function(e) {
+                var file = e.target.files[0]; if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        var data = JSON.parse(evt.target.result);
+                        if (data) {
+                            babyBirth = data.babyBirth || ''; recipes = data.recipes || []; datePlans = data.datePlans || {}; vaccineNotes = data.vaccineNotes || {}; summaries = data.summaries || [];
+                            
+                            Object.keys(datePlans).forEach(function(d) {
+                                Object.keys(datePlans[d]).forEach(function(m) {
+                                    if (!Array.isArray(datePlans[d][m])) {
+                                        datePlans[d][m] = datePlans[d][m] ? [datePlans[d][m]] : [];
+                                    }
+                                });
+                            });
+
+                            saveData(); refreshUI();
+                            alert("🎉 数据恢复并同步成功！");
+                        }
+                    } catch (err) { alert("⚠️ 格式错误"); }
+                };
+                reader.readAsText(file);
+            });
+
+            function updateBabyAgeDisplay() {
+                if (!babyBirth) { document.getElementById('babyAgeDisplay').innerText = "未设置生日（点击设置）"; return; }
+                var birth = new Date(babyBirth), now = new Date();
+                if (birth > now) { document.getElementById('babyAgeDisplay').innerText = "宝宝还没出生哦"; return; }
+                var years = now.getFullYear() - birth.getFullYear(), months = now.getMonth() - birth.getMonth(), days = now.getDate() - birth.getDate();
+                if (days < 0) { months -= 1; var lastMonth = new Date(now.getFullYear(), now.getMonth(), 0); days += lastMonth.getDate(); }
+                if (months < 0) { years -= 1; months += 12; }
+                document.getElementById('babyAgeDisplay').innerText = (years * 12 + months) + "个月" + days + "天";
+            }
+
+            function switchTab(activeBtn, activeView) {
+                ['btnNavPlan', 'btnNavRecipe', 'btnNavSummary'].forEach(id => document.getElementById(id).classList.remove('active'));
+                ['planView', 'recipeView', 'summaryView'].forEach(id => document.getElementById(id).classList.remove('active'));
+                activeBtn.classList.add('active'); activeView.classList.add('active');
+            }
+
+            document.getElementById('btnNavPlan').addEventListener('click', function() { switchTab(this, document.getElementById('planView')); });
+            document.getElementById('btnNavRecipe').addEventListener('click', function() { switchTab(this, document.getElementById('recipeView')); });
+            document.getElementById('btnNavSummary').addEventListener('click', function() { switchTab(this, document.getElementById('summaryView')); });
+
+            document.getElementById('btnSetBirth').addEventListener('click', function() { document.getElementById('babyBirthInput').value = babyBirth; document.getElementById('birthModal').classList.add('active'); });
+            document.getElementById('btnCancelBirth').addEventListener('click', function() { document.getElementById('birthModal').classList.remove('active'); });
+            document.getElementById('btnSaveBirth').addEventListener('click', function() { babyBirth = document.getElementById('babyBirthInput').value; saveData(); updateBabyAgeDisplay(); document.getElementById('birthModal').classList.remove('active'); });
+
+            document.getElementById('btnOpenAddRecipe').addEventListener('click', function() { openRecipeModal(); });
+            document.getElementById('btnCancelRecipe').addEventListener('click', function() { document.getElementById('recipeModal').classList.remove('active'); });
+
+            document.getElementById('btnOpenAddSummary').addEventListener('click', function() { document.getElementById('summaryModal').classList.add('active'); });
+            document.getElementById('btnCancelSummary').addEventListener('click', function() { document.getElementById('summaryModal').classList.remove('active'); });
+
+            document.getElementById('btnCancelPlan').addEventListener('click', function() { document.getElementById('planModal').classList.remove('active'); });
+            document.getElementById('btnCancelVaccine').addEventListener('click', function() { document.getElementById('vaccineModal').classList.remove('active'); });
+
+            // 📅 渲染周日历面板
+            function renderWeekPills() {
+                var container = document.getElementById('weekPills'); container.innerHTML = '';
+                var picker = document.getElementById('calendarJumpInput');
+                picker.value = currentSelectedDate;
+
+                var parts = currentSelectedDate.split('-');
+                var curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                var dayOfWeek = curr.getDay();
+                var diffToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+                
+                var mondayDate = new Date(curr);
+                mondayDate.setDate(curr.getDate() - diffToMonday);
+
+                var weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
+                for (var i = 0; i < 7; i++) {
+                    var next = new Date(mondayDate);
+                    next.setDate(mondayDate.getDate() + i);
+                    
+                    var dateStr = getFormattedDate(next);
+                    var dayLabel = weekDays[i];
+                    var shortDateStr = (next.getMonth() + 1) + '.' + next.getDate();
+
+                    var div = document.createElement('div');
+                    div.className = 'day-pill ' + (dateStr === currentSelectedDate ? 'active' : '');
+                    var hasVaccine = vaccineNotes[dateStr] ? '💉' : '';
+                    div.innerHTML = '<span>' + dayLabel + ' ' + hasVaccine + '</span><span class="date-str">' + shortDateStr + '</span>';
+                    
+                    (function(dStr) {
+                        div.addEventListener('click', function() { currentSelectedDate = dStr; renderWeekPills(); });
+                    })(dateStr);
+
+                    container.appendChild(div);
+                }
+                renderDailyMeal();
+            }
+
+            // 📅 日历控制
+            document.getElementById('btnPrevWeek').addEventListener('click', function() {
+                var parts = currentSelectedDate.split('-');
+                var curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                curr.setDate(curr.getDate() - 7);
+                currentSelectedDate = getFormattedDate(curr);
+                renderWeekPills();
+            });
+
+            document.getElementById('btnNextWeek').addEventListener('click', function() {
+                var parts = currentSelectedDate.split('-');
+                var curr = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                curr.setDate(curr.getDate() + 7);
+                currentSelectedDate = getFormattedDate(curr);
+                renderWeekPills();
+            });
+
+            document.getElementById('btnGoToday').addEventListener('click', function() {
+                currentSelectedDate = todayStr;
+                renderWeekPills();
+            });
+
+            document.getElementById('calendarJumpInput').addEventListener('change', function(e) {
+                if (e.target.value) {
+                    currentSelectedDate = e.target.value;
+                    renderWeekPills();
+                }
+            });
+
+            function renderDailyMeal() {
+                var container = document.getElementById('dailyMealContent'); container.innerHTML = '';
+                var vBannerArea = document.getElementById('vaccineBannerArea');
+                var vNote = vaccineNotes[currentSelectedDate];
+                
+                vBannerArea.innerHTML = '<div class="vaccine-banner">' +
+                    '<span>📅 当前查看：<b>' + currentSelectedDate + '</b> ' + (vNote ? ' | 💉 事项：<b>' + vNote + '</b>' : '') + '</span>' +
+                    '<button class="btn btn-sm btn-warning" id="btnEditVaccine">' + (vNote ? '修改标记' : '+ 标记疫苗/事项') + '</button>' +
+                    '</div>';
+
+                document.getElementById('btnEditVaccine').addEventListener('click', function() {
+                    document.getElementById('vaccineDateInput').value = currentSelectedDate;
+                    document.getElementById('vaccineNoteInput').value = vaccineNotes[currentSelectedDate] || '';
+                    document.getElementById('vaccineModal').classList.add('active');
+                });
+
+                var dayPlan = datePlans[currentSelectedDate] || {};
+                var meals = ["早餐", "午餐", "下午加餐", "晚餐"];
+
+                meals.forEach(function(meal) {
+                    var recipeIds = dayPlan[meal] || [];
+
+                    var section = document.createElement('div'); section.className = 'meal-section';
+                    var titleDiv = document.createElement('div'); titleDiv.className = 'meal-title';
+                    titleDiv.innerHTML = '<span>📌 ' + meal + '</span>';
+
+                    var addBtn = document.createElement('button');
+                    addBtn.className = 'btn btn-sm btn-secondary'; addBtn.innerText = '+ 安排/编辑食物';
+                    addBtn.addEventListener('click', function() { openPlanModal(currentSelectedDate, meal); });
+                    titleDiv.appendChild(addBtn); section.appendChild(titleDiv);
+
+                    if (recipeIds.length > 0) {
+                        recipeIds.forEach(function(recipeId, idx) {
+                            var recipe = recipes.find(r => r.id === recipeId);
+                            if (recipe) {
+                                var card = document.createElement('div'); card.className = 'card'; card.style.marginBottom = '10px';
+                                card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div>' +
+                                                 '<div class="badge-group">' + (recipe.category ? '<span class="badge-cat">' + recipe.category + '</span>' : '') + '</div></div>' +
+                                                 '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(i => '<span class="tag">' + i.trim() + '</span>').join('') + '</div>' +
+                                                 '<div class="steps-text">' + recipe.steps + '</div>';
+
+                                var removeBtn = document.createElement('button');
+                                removeBtn.className = 'btn btn-sm btn-secondary'; removeBtn.style.marginTop = '10px'; removeBtn.style.color = '#ff4d4f'; removeBtn.innerText = '移除此食物';
+                                (function(targetIdx) {
+                                    removeBtn.addEventListener('click', function() {
+                                        datePlans[currentSelectedDate][meal].splice(targetIdx, 1);
+                                        if (datePlans[currentSelectedDate][meal].length === 0) {
+                                            delete datePlans[currentSelectedDate][meal];
+                                        }
+                                        saveData(); renderDailyMeal();
+                                    });
+                                })(idx);
+                                card.appendChild(removeBtn); section.appendChild(card);
+                            }
+                        });
+                    } else {
+                        var emptyDiv = document.createElement('div');
+                        emptyDiv.style.cssText = 'background:#fff; border: 2px dashed #E5E5EA; border-radius:12px; padding:12px; text-align:center; color:#aaa; font-size:12px;';
+                        emptyDiv.innerText = '暂无排餐，点击右上角安排食物'; section.appendChild(emptyDiv);
+                    }
+
+                    container.appendChild(section);
+                });
+            }
+
+            // 💉 核心修复：疫苗事项保存逻辑
+            document.getElementById('btnSaveVaccine').addEventListener('click', function() {
+                var dStr = document.getElementById('vaccineDateInput').value;
+                var note = document.getElementById('vaccineNoteInput').value.trim();
+                
+                if (!dStr) {
+                    dStr = currentSelectedDate; // 若为空则默认使用当前正在查看的日期
+                }
+                
+                if (note) {
+                    vaccineNotes[dStr] = note;
+                } else {
+                    delete vaccineNotes[dStr];
+                }
+                
+                saveData(); 
+                document.getElementById('vaccineModal').classList.remove('active'); 
+                renderWeekPills(); // 刷新数据，不改变用户当前所选视图
+            });
+
+            function openPlanModal(dateStr, meal) {
+                document.getElementById('planDateSelect').value = dateStr;
+                document.getElementById('planMealSelect').value = meal;
+                var recipeSel = document.getElementById('planRecipeSelect');
+                
+                var currentMealRecipes = (datePlans[dateStr] && datePlans[dateStr][meal]) ? datePlans[dateStr][meal] : [];
+                
+                recipeSel.innerHTML = recipes.map(r => {
+                    var isSelected = currentMealRecipes.includes(r.id) ? 'selected' : '';
+                    return '<option value="' + r.id + '" ' + isSelected + '>' + r.name + ' (' + (r.category || '未分类') + ')</option>';
+                }).join('');
+                document.getElementById('planModal').classList.add('active');
+            }
+
+            document.getElementById('btnSavePlan').addEventListener('click', function() {
+                var dateStr = document.getElementById('planDateSelect').value;
+                var meal = document.getElementById('planMealSelect').value;
+                
+                var selectEl = document.getElementById('planRecipeSelect');
+                var selectedOptions = Array.from(selectEl.selectedOptions);
+                var recipeIds = selectedOptions.map(opt => parseInt(opt.value));
+                
+                if (!datePlans[dateStr]) datePlans[dateStr] = {};
+                
+                if (recipeIds.length > 0) {
+                    datePlans[dateStr][meal] = recipeIds;
+                } else {
+                    delete datePlans[dateStr][meal];
+                }
+                
+                saveData(); document.getElementById('planModal').classList.remove('active'); renderDailyMeal();
+            });
+
+            function openRecipeModal(recipeToEdit) {
+                var form = document.getElementById('recipeForm'); form.reset();
+                if (recipeToEdit) {
+                    document.getElementById('recipeModalTitle').innerText = "✏️ 编辑食谱";
+                    document.getElementById('recipeEditId').value = recipeToEdit.id;
+                    document.getElementById('recipeName').value = recipeToEdit.name;
+                    document.getElementById('recipeCategory').value = recipeToEdit.category || '主食';
+                    document.getElementById('recipeIngredients').value = recipeToEdit.ingredients;
+                    document.getElementById('recipeSteps').value = recipeToEdit.steps;
+                } else {
+                    document.getElementById('recipeModalTitle').innerText = "📝 新增食谱";
+                    document.getElementById('recipeEditId').value = "";
+                }
+                document.getElementById('recipeModal').classList.add('active');
+            }
+
+            function renderRecipes() {
+                var query = document.getElementById('searchInput').value.toLowerCase();
+                var selectedCat = document.getElementById('categoryFilter').value;
+                var container = document.getElementById('recipeList'); container.innerHTML = '';
+
+                recipes.forEach(function(r) {
+                    var matchQuery = r.name.toLowerCase().includes(query) || r.ingredients.toLowerCase().includes(query);
+                    var matchCat = (selectedCat === '全部分类') || (r.category === selectedCat);
+
+                    if (matchQuery && matchCat) {
+                        var card = document.createElement('div'); card.className = 'card';
+                        card.innerHTML = '<div class="card-header"><div class="card-title">' + r.name + '</div>' +
+                                         '<div class="badge-group">' + (r.category ? '<span class="badge-cat">' + r.category + '</span>' : '') + '</div></div>' +
+                                         '<div class="ingredients-tag">' + r.ingredients.split(',').map(i => '<span class="tag">🥦 ' + i.trim() + '</span>').join('') + '</div>' +
+                                         '<div class="steps-text">' + r.steps + '</div>';
+
+                        var btnGroup = document.createElement('div'); btnGroup.style.cssText = 'display:flex; gap:8px; margin-top:12px;';
+
+                        var planBtn = document.createElement('button'); planBtn.className = 'btn btn-sm btn-secondary'; planBtn.innerText = '📅 加入计划';
+                        planBtn.addEventListener('click', function() { 
+                            openPlanModal(currentSelectedDate, "早餐"); 
+                            var recipeSel = document.getElementById('planRecipeSelect');
+                            var existingVals = Array.from(recipeSel.selectedOptions).map(o => o.value);
+                            if (!existingVals.includes(String(r.id))) {
+                                existingVals.push(String(r.id));
+                            }
+                            Array.from(recipeSel.options).forEach(opt => {
+                                opt.selected = existingVals.includes(opt.value);
+                            });
+                        });
+
+                        var editBtn = document.createElement('button'); editBtn.className = 'btn btn-sm btn-outline'; editBtn.innerText = '✏️ 编辑';
+                        editBtn.addEventListener('click', function() { openRecipeModal(r); });
+
+                        var delBtn = document.createElement('button'); delBtn.className = 'btn btn-sm btn-secondary'; delBtn.style.color = '#ff4d4f'; delBtn.innerText = '删除';
+                        delBtn.addEventListener('click', function() {
+                            if (confirm("确定删除此食谱吗？")) {
+                                recipes = recipes.filter(item => item.id !== r.id);
+                                saveData(); renderRecipes(); renderDailyMeal();
+                            }
+                        });
+
+                        btnGroup.appendChild(planBtn); btnGroup.appendChild(editBtn); btnGroup.appendChild(delBtn);
+                        card.appendChild(btnGroup); container.appendChild(card);
+                    }
+                });
+            }
+
+            document.getElementById('recipeForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                var editId = document.getElementById('recipeEditId').value;
+                var recipeData = {
+                    name: document.getElementById('recipeName').value,
+                    category: document.getElementById('recipeCategory').value,
+                    ingredients: document.getElementById('recipeIngredients').value,
+                    steps: document.getElementById('recipeSteps').value
+                };
+
+                if (editId) {
+                    var idNum = parseInt(editId);
+                    var idx = recipes.findIndex(r => r.id === idNum);
+                    if (idx !== -1) recipes[idx] = Object.assign({ id: idNum }, recipeData);
+                } else {
+                    recipeData.id = Date.now();
+                    recipes.push(recipeData);
+                }
+
+                saveData();
+                document.getElementById('recipeModal').classList.remove('active');
+                document.getElementById('recipeForm').reset();
+                renderRecipes(); renderDailyMeal();
+            });
+
+            function renderSummaries() {
+                var container = document.getElementById('summaryList'); container.innerHTML = '';
+                if (summaries.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:#aaa; font-size:13px;">暂无月龄小结，点击右上角添加</div>';
+                    return;
+                }
+
+                summaries.forEach(function(s, index) {
+                    var card = document.createElement('div'); card.className = 'card';
+                    card.innerHTML = '<div class="card-header"><div class="card-title">' + s.stage + '</div></div>' +
+                                     '<div style="font-size:13px; color:#555; margin-bottom:6px;"><b>🥦 新解锁食材：</b>' + (s.foods || '无') + '</div>' +
+                                     '<div class="steps-text"><b>📝 总结与心得：</b>\n' + s.notes + '</div>';
+
+                    var delBtn = document.createElement('button'); delBtn.className = 'btn btn-sm btn-secondary'; delBtn.style.cssText = 'margin-top:10px; color:#ff4d4f;'; delBtn.innerText = '删除小结';
+                    delBtn.addEventListener('click', function() {
+                        if (confirm("确定删除这条月龄小结吗？")) {
+                            summaries.splice(index, 1);
+                            saveData(); renderSummaries();
+                        }
+                    });
+
+                    card.appendChild(delBtn); container.appendChild(card);
+                });
+            }
+
+            document.getElementById('summaryForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                var newSummary = {
+                    stage: document.getElementById('summaryStage').value,
+                    foods: document.getElementById('summaryNewFoods').value,
+                    notes: document.getElementById('summaryNotes').value
+                };
+                summaries.unshift(newSummary);
+                saveData();
+                document.getElementById('summaryModal').classList.remove('active');
+                document.getElementById('summaryForm').reset();
+                renderSummaries();
+            });
+
+            document.getElementById('searchInput').addEventListener('input', renderRecipes);
+            document.getElementById('categoryFilter').addEventListener('change', renderRecipes);
+
+            // 初始化加载数据
+            loadDataFromCloud();
+        });
     </script>
 </body>
 </html>
