@@ -47,8 +47,11 @@
         .badge-group { display: flex; gap: 4px; }
         .badge-cat { background: var(--secondary-light); color: var(--secondary); font-size: 11px; padding: 3px 8px; border-radius: 12px; }
 
-        .vaccine-banner { background: #FFF9E6; border: 1px solid #FFE0B2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #D97706; display: flex; justify-content: space-between; align-items: center; }
-        
+        .vaccine-container { background: #FFF9E6; border: 1px solid #FFE0B2; border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+        .vaccine-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: bold; color: #D97706; }
+        .vaccine-item { background: #fff; border-radius: 8px; padding: 8px 10px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+        .vaccine-date { font-weight: 600; color: #D97706; margin-right: 6px; }
+
         .ingredients-tag { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
         .tag { background: #F0F2F5; color: #555; font-size: 12px; padding: 3px 8px; border-radius: 6px; }
         .steps-text { font-size: 13px; color: #666; line-height: 1.5; white-space: pre-line; margin-top: 8px; border-top: 1px dashed #eee; padding-top: 8px; }
@@ -196,10 +199,11 @@
         </div>
     </div>
 
-    <!-- 弹窗：标记疫苗 -->
+    <!-- 弹窗：新增/编辑标记事项 -->
     <div class="modal" id="vaccineModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:14px;">💉 标注疫苗/特殊事项</h3>
+            <h3 style="margin-bottom:14px;" id="vaccineModalTitle">💉 标注疫苗/特殊事项</h3>
+            <input type="hidden" id="vaccineEditId">
             <div class="form-group">
                 <label>选择日期</label>
                 <input type="date" id="vaccineDateInput">
@@ -211,6 +215,17 @@
             <div style="display:flex; gap:10px;">
                 <button type="button" class="btn btn-secondary" id="btnCancelVaccine">取消</button>
                 <button type="button" class="btn" id="btnSaveVaccine">保存标注</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：查看全部标记事项 -->
+    <div class="modal" id="allVaccinesModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:14px;">💉 所有标记事项列表</h3>
+            <div id="allVaccinesList" style="max-height: 60vh; overflow-y: auto;"></div>
+            <div style="margin-top:14px;">
+                <button type="button" class="btn btn-secondary" id="btnCloseAllVaccines">关闭</button>
             </div>
         </div>
     </div>
@@ -332,7 +347,7 @@
                 { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入" }
             ];
             var datePlans = {};
-            var vaccineNotes = {};
+            var vaccineList = []; // 兼容多条事项结构：[{ id: 123, date: '2026-08-05', note: '接种疫苗' }]
             var summaries = [];
 
             function getFormattedDate(dateObj) {
@@ -359,7 +374,7 @@
                 }
 
                 updateSyncStatus('☁️ 保存中...', '#D97706');
-                const payload = { babyBirth, recipes, datePlans, vaccineNotes, summaries };
+                const payload = { babyBirth, recipes, datePlans, vaccineList, summaries };
 
                 try {
                     const { data, error } = await supabaseClient
@@ -411,7 +426,18 @@
                             });
                         });
 
-                        vaccineNotes = cData.vaccineNotes || {};
+                        // 兼容旧版的键值对格式 vaccineNotes -> 转换成新版列表 vaccineList
+                        if (cData.vaccineList && Array.isArray(cData.vaccineList)) {
+                            vaccineList = cData.vaccineList;
+                        } else if (cData.vaccineNotes && typeof cData.vaccineNotes === 'object') {
+                            vaccineList = [];
+                            Object.keys(cData.vaccineNotes).forEach(function(dKey) {
+                                vaccineList.push({ id: Date.now() + Math.random(), date: dKey, note: cData.vaccineNotes[dKey] });
+                            });
+                        } else {
+                            vaccineList = [];
+                        }
+
                         summaries = cData.summaries || [];
                         updateSyncStatus('✅ 云端就绪', '#4ECDC4');
                     } else {
@@ -458,25 +484,21 @@
 
                 Object.keys(datePlans).forEach(function(dStr) {
                     var dayPlan = datePlans[dStr];
-                    var vNote = vaccineNotes[dStr] || '';
                     Object.keys(dayPlan).forEach(function(meal) {
                         var rIds = dayPlan[meal];
                         if (Array.isArray(rIds)) {
                             rIds.forEach(function(rId) {
                                 var recipe = recipes.find(function(r) { return r.id === rId; });
                                 if (recipe) {
-                                    csvRows.push([
-                                        '排餐计划',
-                                        dStr,
-                                        meal,
-                                        recipe.name,
-                                        recipe.ingredients,
-                                        vNote ? ('疫苗/特殊事项: ' + vNote) : ''
-                                    ].map(escapeCSV).join(','));
+                                    csvRows.push(['排餐计划', dStr, meal, recipe.name, recipe.ingredients, ''].map(escapeCSV).join(','));
                                 }
                             });
                         }
                     });
+                });
+
+                vaccineList.forEach(function(v) {
+                    csvRows.push(['标注事项', v.date, '疫苗/记录', v.note, '-', '-'].map(escapeCSV).join(','));
                 });
 
                 recipes.forEach(function(r) {
@@ -491,7 +513,7 @@
                 var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = '宝宝辅食通_数据_' + todayStr + '.csv';
+                a.download = '登登的辅食日记_数据_' + todayStr + '.csv';
                 a.click();
             });
 
@@ -518,7 +540,7 @@
                 
                 var newRecipes = [];
                 var newDatePlans = {};
-                var newVaccines = {};
+                var newVaccines = [];
                 var newSummaries = [];
 
                 for (var i = 1; i < lines.length; i++) {
@@ -531,6 +553,8 @@
                         newRecipes.push({ id: Date.now() + Math.floor(Math.random() * 10000), name: col3, category: col1 === '-' ? '主食' : col1, ingredients: col4, steps: col5 });
                     } else if (type === '月龄小结') {
                         newSummaries.push({ stage: col1, foods: col2 === '无' ? '' : col2, notes: col5 });
+                    } else if (type === '标注事项') {
+                        newVaccines.push({ id: Date.now() + Math.floor(Math.random() * 10000), date: col1, note: col3 });
                     } else if (type === '排餐计划') {
                         var dStr = col1; var meal = col2; var recipeName = col3;
                         var existingRecipe = newRecipes.find(r => r.name === recipeName) || recipes.find(r => r.name === recipeName);
@@ -542,16 +566,12 @@
                         if (!newDatePlans[dStr]) newDatePlans[dStr] = {};
                         if (!newDatePlans[dStr][meal]) newDatePlans[dStr][meal] = [];
                         newDatePlans[dStr][meal].push(rId);
-
-                        if (col5 && col5.indexOf('疫苗/特殊事项: ') !== -1) {
-                            newVaccines[dStr] = col5.replace('疫苗/特殊事项: ', '');
-                        }
                     }
                 }
 
                 if (newRecipes.length > 0) recipes = newRecipes;
                 if (Object.keys(newDatePlans).length > 0) datePlans = newDatePlans;
-                if (Object.keys(newVaccines).length > 0) vaccineNotes = newVaccines;
+                if (newVaccines.length > 0) vaccineList = newVaccines;
                 if (newSummaries.length > 0) summaries = newSummaries;
 
                 saveData();
@@ -580,7 +600,7 @@
 
             // 导出/导入 JSON
             document.getElementById('btnExportData').addEventListener('click', function() {
-                var backupData = { babyBirth, recipes, datePlans, vaccineNotes, summaries };
+                var backupData = { babyBirth, recipes, datePlans, vaccineList, summaries };
                 var blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
                 var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '辅食通备份_' + todayStr + '.json'; a.click();
             });
@@ -593,7 +613,8 @@
                     try {
                         var data = JSON.parse(evt.target.result);
                         if (data) {
-                            babyBirth = data.babyBirth || ''; recipes = data.recipes || []; datePlans = data.datePlans || {}; vaccineNotes = data.vaccineNotes || {}; summaries = data.summaries || [];
+                            babyBirth = data.babyBirth || ''; recipes = data.recipes || []; datePlans = data.datePlans || {}; summaries = data.summaries || [];
+                            if (data.vaccineList) vaccineList = data.vaccineList;
                             
                             Object.keys(datePlans).forEach(function(d) {
                                 Object.keys(datePlans[d]).forEach(function(m) {
@@ -670,7 +691,7 @@
 
                     var div = document.createElement('div');
                     div.className = 'day-pill ' + (dateStr === currentSelectedDate ? 'active' : '');
-                    var hasVaccine = vaccineNotes[dateStr] ? '💉' : '';
+                    var hasVaccine = vaccineList.some(v => v.date === dateStr) ? '💉' : '';
                     div.innerHTML = '<span>' + dayLabel + ' ' + hasVaccine + '</span><span class="date-str">' + shortDateStr + '</span>';
                     
                     (function(dStr) {
@@ -714,17 +735,60 @@
             function renderDailyMeal() {
                 var container = document.getElementById('dailyMealContent'); container.innerHTML = '';
                 var vBannerArea = document.getElementById('vaccineBannerArea');
-                var vNote = vaccineNotes[currentSelectedDate];
                 
-                vBannerArea.innerHTML = '<div class="vaccine-banner">' +
-                    '<span>📅 当前查看：<b>' + currentSelectedDate + '</b> ' + (vNote ? ' | 💉 事项：<b>' + vNote + '</b>' : '') + '</span>' +
-                    '<button class="btn btn-sm btn-warning" id="btnEditVaccine">' + (vNote ? '修改标记' : '+ 标记疫苗/事项') + '</button>' +
+                // 核心更新：筛选选中日期当天以及之后的所有标记事项
+                var upcomingVaccines = vaccineList.filter(v => v.date >= currentSelectedDate)
+                                                  .sort((a,b) => a.date.localeCompare(b.date));
+
+                var html = '<div class="vaccine-container">' +
+                    '<div class="vaccine-header">' +
+                        '<span>📅 选中日期及后续事项 (选中: ' + currentSelectedDate + ')</span>' +
+                        '<div>' +
+                            '<button class="btn btn-sm btn-outline" id="btnViewAllVaccines" style="margin-right:4px;">📋 查看全部</button>' +
+                            '<button class="btn btn-sm btn-warning" id="btnAddVaccine">+ 新增标记</button>' +
+                        '</div>' +
                     '</div>';
 
-                document.getElementById('btnEditVaccine').addEventListener('click', function() {
-                    document.getElementById('vaccineDateInput').value = currentSelectedDate;
-                    document.getElementById('vaccineNoteInput').value = vaccineNotes[currentSelectedDate] || '';
-                    document.getElementById('vaccineModal').classList.add('active');
+                if (upcomingVaccines.length > 0) {
+                    upcomingVaccines.forEach(v => {
+                        html += '<div class="vaccine-item">' +
+                            '<div><span class="vaccine-date">💉 ' + v.date + '</span><span>' + v.note + '</span></div>' +
+                            '<div style="display:flex; gap:4px;">' +
+                                '<button class="btn btn-sm btn-outline btn-edit-v" data-id="' + v.id + '">✏️</button>' +
+                                '<button class="btn btn-sm btn-outline btn-del-v" data-id="' + v.id + '" style="color:#ff4d4f;">🗑️</button>' +
+                            '</div>' +
+                        '</div>';
+                    });
+                } else {
+                    html += '<div style="font-size:12px; color:#aaa; text-align:center; padding:6px;">选中日期及之后无标记事项</div>';
+                }
+                html += '</div>';
+
+                vBannerArea.innerHTML = html;
+
+                // 绑定标记事项操作事件
+                document.getElementById('btnAddVaccine').addEventListener('click', function() {
+                    openVaccineModal(null, currentSelectedDate);
+                });
+                document.getElementById('btnViewAllVaccines').addEventListener('click', openAllVaccinesModal);
+
+                document.querySelectorAll('.btn-edit-v').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        var id = parseFloat(this.getAttribute('data-id'));
+                        var item = vaccineList.find(v => v.id === id);
+                        if (item) openVaccineModal(item);
+                    });
+                });
+
+                document.querySelectorAll('.btn-del-v').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        var id = parseFloat(this.getAttribute('data-id'));
+                        if (confirm("确定删除此标记事项吗？")) {
+                            vaccineList = vaccineList.filter(v => v.id !== id);
+                            saveData();
+                            renderWeekPills();
+                        }
+                    });
                 });
 
                 var dayPlan = datePlans[currentSelectedDate] || {};
@@ -776,29 +840,98 @@
                 });
             }
 
-            // 💉 【核心修复】疫苗事项保存与自动选中日期逻辑
-            document.getElementById('btnSaveVaccine').addEventListener('click', function() {
-                var dStr = document.getElementById('vaccineDateInput').value;
-                var note = document.getElementById('vaccineNoteInput').value.trim();
-                
-                // 如果用户没选日期，兜底为当前正在查看的日期
-                if (!dStr) {
-                    dStr = currentSelectedDate;
-                }
-                
-                // 保存数据
-                if (note) {
-                    vaccineNotes[dStr] = note;
+            // 打开标记事项弹窗（支持新增与修改）
+            function openVaccineModal(itemToEdit, defaultDate) {
+                if (itemToEdit) {
+                    document.getElementById('vaccineModalTitle').innerText = "✏️ 编辑标记事项";
+                    document.getElementById('vaccineEditId').value = itemToEdit.id;
+                    document.getElementById('vaccineDateInput').value = itemToEdit.date;
+                    document.getElementById('vaccineNoteInput').value = itemToEdit.note;
                 } else {
-                    delete vaccineNotes[dStr];
+                    document.getElementById('vaccineModalTitle').innerText = "💉 标注疫苗/特殊事项";
+                    document.getElementById('vaccineEditId').value = "";
+                    document.getElementById('vaccineDateInput').value = defaultDate || currentSelectedDate;
+                    document.getElementById('vaccineNoteInput').value = "";
                 }
-                
-                // 保存后直接将视图跳转到用户选择的这个新日期
+                document.getElementById('vaccineModal').classList.add('active');
+            }
+
+            // 打开所有标记事项清单弹窗
+            function openAllVaccinesModal() {
+                var container = document.getElementById('allVaccinesList');
+                container.innerHTML = '';
+                var sortedList = vaccineList.slice().sort((a,b) => a.date.localeCompare(b.date));
+
+                if (sortedList.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; color:#aaa; font-size:13px; padding:20px;">暂无标记事项</div>';
+                } else {
+                    sortedList.forEach(v => {
+                        var div = document.createElement('div');
+                        div.className = 'vaccine-item';
+                        div.style.marginBottom = '8px';
+                        div.innerHTML = '<div><span class="vaccine-date">💉 ' + v.date + '</span><span>' + v.note + '</span></div>' +
+                            '<div style="display:flex; gap:4px;">' +
+                                '<button class="btn btn-sm btn-outline btn-edit-v-all" data-id="' + v.id + '">✏️</button>' +
+                                '<button class="btn btn-sm btn-outline btn-del-v-all" data-id="' + v.id + '" style="color:#ff4d4f;">🗑️</button>' +
+                            '</div>';
+                        container.appendChild(div);
+                    });
+
+                    container.querySelectorAll('.btn-edit-v-all').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            var id = parseFloat(this.getAttribute('data-id'));
+                            var item = vaccineList.find(v => v.id === id);
+                            if (item) {
+                                document.getElementById('allVaccinesModal').classList.remove('active');
+                                openVaccineModal(item);
+                            }
+                        });
+                    });
+
+                    container.querySelectorAll('.btn-del-v-all').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            var id = parseFloat(this.getAttribute('data-id'));
+                            if (confirm("确定删除此标记事项吗？")) {
+                                vaccineList = vaccineList.filter(v => v.id !== id);
+                                saveData();
+                                openAllVaccinesModal();
+                                renderWeekPills();
+                            }
+                        });
+                    });
+                }
+                document.getElementById('allVaccinesModal').classList.add('active');
+            }
+
+            document.getElementById('btnCloseAllVaccines').addEventListener('click', function() {
+                document.getElementById('allVaccinesModal').classList.remove('active');
+            });
+
+            // 保存标记事项（新增/编辑）
+            document.getElementById('btnSaveVaccine').addEventListener('click', function() {
+                var editId = document.getElementById('vaccineEditId').value;
+                var dStr = document.getElementById('vaccineDateInput').value || currentSelectedDate;
+                var note = document.getElementById('vaccineNoteInput').value.trim();
+
+                if (!note) {
+                    alert("请填写入事项内容哦！");
+                    return;
+                }
+
+                if (editId) {
+                    var idNum = parseFloat(editId);
+                    var idx = vaccineList.findIndex(v => v.id === idNum);
+                    if (idx !== -1) {
+                        vaccineList[idx] = { id: idNum, date: dStr, note: note };
+                    }
+                } else {
+                    vaccineList.push({ id: Date.now() + Math.random(), date: dStr, note: note });
+                }
+
                 currentSelectedDate = dStr;
-                
-                saveData(); 
-                document.getElementById('vaccineModal').classList.remove('active'); 
-                renderWeekPills(); // 重新渲染日历，界面会自动高亮选中的日期并显示针头 💉 标识！
+                saveData();
+                document.getElementById('vaccineModal').classList.remove('active');
+                renderWeekPills();
             });
 
             function openPlanModal(dateStr, meal) {
