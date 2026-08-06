@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>登登的辅食日记 (Supabase云同步版)</title>
+    <title>宝宝辅食通 (Supabase云同步版)</title>
     <!-- 引入 Supabase 官方 JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -39,7 +39,7 @@
         .search-filter-box { display: flex; gap: 8px; margin-bottom: 16px; }
         .search-box { background: #fff; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; flex: 1; box-shadow: var(--shadow); }
         .search-box input { border: none; outline: none; width: 100%; font-size: 14px; }
-        .category-select { background: #fff; border: none; border-radius: 12px; padding: 0 10px; font-size: 14px; color: var(--dark); outline: none; box-shadow: var(--shadow); cursor: pointer; }
+        .category-select { background: #fff; border: 1px solid #E5E5EA; border-radius: 12px; padding: 0 10px; font-size: 14px; color: var(--dark); outline: none; box-shadow: var(--shadow); cursor: pointer; height: 40px; }
 
         .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); position: relative; }
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
@@ -90,7 +90,7 @@
 
     <header>
         <div class="header-top">
-            <h1>👶 登登的辅食日记 <span class="sync-status" id="syncStatus">☁️ 准备就绪</span></h1>
+            <h1>👶 宝宝辅食通 <span class="sync-status" id="syncStatus">☁️ 准备就绪</span></h1>
             <div>
                 <button class="btn btn-sm btn-outline" id="btnSyncKey">🔑 密钥</button>
                 <button class="btn btn-sm" id="btnOpenAddRecipe">+ 记食谱</button>
@@ -317,6 +317,20 @@
                     <option value="晚餐">晚餐</option>
                 </select>
             </div>
+            
+            <div class="form-group">
+                <label>筛选食物分类</label>
+                <select id="planCategoryFilter">
+                    <option value="全部分类">全部分类</option>
+                    <option value="主食">主食</option>
+                    <option value="肉">肉</option>
+                    <option value="蔬菜">蔬菜</option>
+                    <option value="水果">水果</option>
+                    <option value="酱">酱</option>
+                    <option value="甜点">甜点</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label>选择食谱（按住 Ctrl/Cmd 或滑动可多选食物）</label>
                 <select id="planRecipeSelect" multiple style="height:140px;"></select>
@@ -347,8 +361,11 @@
                 { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入" }
             ];
             var datePlans = {};
-            var vaccineList = []; // 兼容多条事项结构：[{ id: 123, date: '2026-08-05', note: '接种疫苗' }]
+            var vaccineList = [];
             var summaries = [];
+
+            // 临时记录当前排餐弹窗已勾选的 recipeId 数组
+            var currentModalSelectedRecipeIds = [];
 
             function getFormattedDate(dateObj) {
                 var y = dateObj.getFullYear();
@@ -426,7 +443,6 @@
                             });
                         });
 
-                        // 兼容旧版的键值对格式 vaccineNotes -> 转换成新版列表 vaccineList
                         if (cData.vaccineList && Array.isArray(cData.vaccineList)) {
                             vaccineList = cData.vaccineList;
                         } else if (cData.vaccineNotes && typeof cData.vaccineNotes === 'object') {
@@ -513,7 +529,7 @@
                 var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = '登登的辅食日记_数据_' + todayStr + '.csv';
+                a.download = '宝宝辅食通_数据_' + todayStr + '.csv';
                 a.click();
             });
 
@@ -736,9 +752,12 @@
                 var container = document.getElementById('dailyMealContent'); container.innerHTML = '';
                 var vBannerArea = document.getElementById('vaccineBannerArea');
                 
-                // 核心更新：筛选选中日期当天以及之后的所有标记事项
+                // 需求：过滤选中日期及之后的事项，并按日期升序排序
                 var upcomingVaccines = vaccineList.filter(v => v.date >= currentSelectedDate)
                                                   .sort((a,b) => a.date.localeCompare(b.date));
+
+                // 最多只在首页展示距离当前选中日期最近的 3 条
+                var displayVaccines = upcomingVaccines.slice(0, 3);
 
                 var html = '<div class="vaccine-container">' +
                     '<div class="vaccine-header">' +
@@ -749,8 +768,8 @@
                         '</div>' +
                     '</div>';
 
-                if (upcomingVaccines.length > 0) {
-                    upcomingVaccines.forEach(v => {
+                if (displayVaccines.length > 0) {
+                    displayVaccines.forEach(v => {
                         html += '<div class="vaccine-item">' +
                             '<div><span class="vaccine-date">💉 ' + v.date + '</span><span>' + v.note + '</span></div>' +
                             '<div style="display:flex; gap:4px;">' +
@@ -759,6 +778,9 @@
                             '</div>' +
                         '</div>';
                     });
+                    if (upcomingVaccines.length > 3) {
+                        html += '<div style="font-size:12px; color:#888; text-align:center; padding-top:8px;">仅显示最近 3 条，更多请点击“📋 查看全部”</div>';
+                    }
                 } else {
                     html += '<div style="font-size:12px; color:#aaa; text-align:center; padding:6px;">选中日期及之后无标记事项</div>';
                 }
@@ -766,7 +788,6 @@
 
                 vBannerArea.innerHTML = html;
 
-                // 绑定标记事项操作事件
                 document.getElementById('btnAddVaccine').addEventListener('click', function() {
                     openVaccineModal(null, currentSelectedDate);
                 });
@@ -811,10 +832,10 @@
                             var recipe = recipes.find(r => r.id === recipeId);
                             if (recipe) {
                                 var card = document.createElement('div'); card.className = 'card'; card.style.marginBottom = '10px';
+                                
                                 card.innerHTML = '<div class="card-header"><div class="card-title">' + recipe.name + '</div>' +
                                                  '<div class="badge-group">' + (recipe.category ? '<span class="badge-cat">' + recipe.category + '</span>' : '') + '</div></div>' +
-                                                 '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(i => '<span class="tag">' + i.trim() + '</span>').join('') + '</div>' +
-                                                 '<div class="steps-text">' + recipe.steps + '</div>';
+                                                 '<div class="ingredients-tag">' + recipe.ingredients.split(',').map(i => '<span class="tag">' + i.trim() + '</span>').join('') + '</div>';
 
                                 var removeBtn = document.createElement('button');
                                 removeBtn.className = 'btn btn-sm btn-secondary'; removeBtn.style.marginTop = '10px'; removeBtn.style.color = '#ff4d4f'; removeBtn.innerText = '移除此食物';
@@ -840,7 +861,6 @@
                 });
             }
 
-            // 打开标记事项弹窗（支持新增与修改）
             function openVaccineModal(itemToEdit, defaultDate) {
                 if (itemToEdit) {
                     document.getElementById('vaccineModalTitle').innerText = "✏️ 编辑标记事项";
@@ -856,7 +876,6 @@
                 document.getElementById('vaccineModal').classList.add('active');
             }
 
-            // 打开所有标记事项清单弹窗
             function openAllVaccinesModal() {
                 var container = document.getElementById('allVaccinesList');
                 container.innerHTML = '';
@@ -907,7 +926,6 @@
                 document.getElementById('allVaccinesModal').classList.remove('active');
             });
 
-            // 保存标记事项（新增/编辑）
             document.getElementById('btnSaveVaccine').addEventListener('click', function() {
                 var editId = document.getElementById('vaccineEditId').value;
                 var dStr = document.getElementById('vaccineDateInput').value || currentSelectedDate;
@@ -934,37 +952,80 @@
                 renderWeekPills();
             });
 
+            // 打开排餐弹窗
             function openPlanModal(dateStr, meal) {
                 document.getElementById('planDateSelect').value = dateStr;
                 document.getElementById('planMealSelect').value = meal;
-                var recipeSel = document.getElementById('planRecipeSelect');
+                document.getElementById('planCategoryFilter').value = '全部分类';
                 
-                var currentMealRecipes = (datePlans[dateStr] && datePlans[dateStr][meal]) ? datePlans[dateStr][meal] : [];
+                currentModalSelectedRecipeIds = (datePlans[dateStr] && datePlans[dateStr][meal]) ? datePlans[dateStr][meal].slice() : [];
                 
-                recipeSel.innerHTML = recipes.map(r => {
-                    var isSelected = currentMealRecipes.includes(r.id) ? 'selected' : '';
-                    return '<option value="' + r.id + '" ' + isSelected + '>' + r.name + ' (' + (r.category || '未分类') + ')</option>';
-                }).join('');
+                updatePlanRecipeOptions();
                 document.getElementById('planModal').classList.add('active');
             }
 
+            // 动态更新排餐弹窗里的食谱列表（带分类筛选）
+            function updatePlanRecipeOptions() {
+                var categoryFilter = document.getElementById('planCategoryFilter').value;
+                var recipeSel = document.getElementById('planRecipeSelect');
+                
+                var filteredRecipes = recipes.filter(r => {
+                    return (categoryFilter === '全部分类') || (r.category === categoryFilter);
+                });
+
+                recipeSel.innerHTML = filteredRecipes.map(r => {
+                    var isSelected = currentModalSelectedRecipeIds.includes(r.id) ? 'selected' : '';
+                    return '<option value="' + r.id + '" ' + isSelected + '>' + r.name + ' (' + (r.category || '未分类') + ')</option>';
+                }).join('');
+            }
+
+            // 监听分类筛选切换
+            document.getElementById('planCategoryFilter').addEventListener('change', function() {
+                syncCurrentModalSelectedRecipes();
+                updatePlanRecipeOptions();
+            });
+
+            // 监听多选框的手动选择变化
+            document.getElementById('planRecipeSelect').addEventListener('change', function() {
+                syncCurrentModalSelectedRecipes();
+            });
+
+            function syncCurrentModalSelectedRecipes() {
+                var recipeSel = document.getElementById('planRecipeSelect');
+                var visibleOptions = Array.from(recipeSel.options);
+                
+                visibleOptions.forEach(opt => {
+                    var rId = parseInt(opt.value);
+                    if (opt.selected) {
+                        if (!currentModalSelectedRecipeIds.includes(rId)) {
+                            currentModalSelectedRecipeIds.push(rId);
+                        }
+                    } else {
+                        var idx = currentModalSelectedRecipeIds.indexOf(rId);
+                        if (idx !== -1) {
+                            currentModalSelectedRecipeIds.splice(idx, 1);
+                        }
+                    }
+                });
+            }
+
             document.getElementById('btnSavePlan').addEventListener('click', function() {
+                syncCurrentModalSelectedRecipes();
+                
                 var dateStr = document.getElementById('planDateSelect').value;
                 var meal = document.getElementById('planMealSelect').value;
                 
-                var selectEl = document.getElementById('planRecipeSelect');
-                var selectedOptions = Array.from(selectEl.selectedOptions);
-                var recipeIds = selectedOptions.map(opt => parseInt(opt.value));
-                
                 if (!datePlans[dateStr]) datePlans[dateStr] = {};
                 
-                if (recipeIds.length > 0) {
-                    datePlans[dateStr][meal] = recipeIds;
+                if (currentModalSelectedRecipeIds.length > 0) {
+                    datePlans[dateStr][meal] = currentModalSelectedRecipeIds.slice();
                 } else {
                     delete datePlans[dateStr][meal];
                 }
                 
-                saveData(); document.getElementById('planModal').classList.remove('active'); renderDailyMeal();
+                saveData(); 
+                document.getElementById('planModal').classList.remove('active'); 
+                renderDailyMeal();
             });
 
             function openRecipeModal(recipeToEdit) {
@@ -1004,14 +1065,10 @@
                         var planBtn = document.createElement('button'); planBtn.className = 'btn btn-sm btn-secondary'; planBtn.innerText = '📅 加入计划';
                         planBtn.addEventListener('click', function() { 
                             openPlanModal(currentSelectedDate, "早餐"); 
-                            var recipeSel = document.getElementById('planRecipeSelect');
-                            var existingVals = Array.from(recipeSel.selectedOptions).map(o => o.value);
-                            if (!existingVals.includes(String(r.id))) {
-                                existingVals.push(String(r.id));
+                            if (!currentModalSelectedRecipeIds.includes(r.id)) {
+                                currentModalSelectedRecipeIds.push(r.id);
                             }
-                            Array.from(recipeSel.options).forEach(opt => {
-                                opt.selected = existingVals.includes(opt.value);
-                            });
+                            updatePlanRecipeOptions();
                         });
 
                         var editBtn = document.createElement('button'); editBtn.className = 'btn btn-sm btn-outline'; editBtn.innerText = '✏️ 编辑';
