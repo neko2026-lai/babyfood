@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宝宝辅食通 (Supabase云同步版)</title>
+    
+    <!-- 📱 设置添加到手机桌面的 Logo 图标 -->
+    <link rel="apple-touch-icon" href="微信图片_20260806132634_1089_143.jpg./logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./logo.png">
+    <link rel="shortcut icon" href="./logo.png">
+
+    <title>登登的辅食日记 (Supabase云同步版)</title>
     <!-- 引入 Supabase 官方 JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -91,7 +97,7 @@
 
     <header>
         <div class="header-top">
-            <h1>👶 宝宝辅食通 <span class="sync-status" id="syncStatus">☁️ 准备就绪</span></h1>
+            <h1>👶 登登的辅食日记 <span class="sync-status" id="syncStatus">☁️ 准备就绪</span></h1>
             <div>
                 <button class="btn btn-sm btn-outline" id="btnSyncKey">🔑 密钥</button>
                 <button class="btn btn-sm" id="btnOpenAddRecipe">+ 记食谱</button>
@@ -530,7 +536,7 @@
                 var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = '宝宝辅食通_数据_' + todayStr + '.csv';
+                a.download = '登登的辅食日记_数据_' + todayStr + '.csv';
                 a.click();
             });
 
