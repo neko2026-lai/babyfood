@@ -109,6 +109,11 @@
         .stock-input-sm { width: 70px !important; padding: 4px 8px !important; text-align: center; font-weight: bold; }
         .plan-stock-info { font-size: 12px; color: #666; background: #FFF9E6; border-radius: 6px; padding: 4px 8px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; }
         
+        /* 需求1：配菜选择区样式 */
+        .side-dish-box { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px; margin-top: 10px; }
+        .side-dish-item-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #DCFCE7; }
+        .side-dish-item-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
         /* 可点击排餐卡片交互手势 */
         .clickable-plan-card { cursor: pointer; transition: transform 0.1s ease; }
         .clickable-plan-card:active { transform: scale(0.99); }
@@ -261,7 +266,7 @@
         </div>
     </div>
 
-    <!-- 弹窗：排餐直接查看制作步骤弹窗 (新增需求 2) -->
+    <!-- 弹窗：排餐直接查看制作步骤弹窗 -->
     <div class="modal" id="recipeDetailModal">
         <div class="modal-content">
             <h3 style="margin-bottom:6px;" id="detailRecipeName">📖 食谱详情</h3>
@@ -388,6 +393,12 @@
                 </select>
             </div>
 
+            <!-- 需求2：增加关键字搜索食物的输入框 -->
+            <div class="form-group">
+                <label>🔍 搜索食物名称（关键字）</label>
+                <input type="text" id="planSearchInput" placeholder="输入食物名称快速查找...">
+            </div>
+
             <div class="form-group">
                 <label>选择食谱（按住 Ctrl/Cmd 或滑动可多选食物）</label>
                 <select id="planRecipeSelect" multiple style="height:140px;"></select>
@@ -395,6 +406,9 @@
 
             <!-- 动态渲染肉/主食消耗量输入区 -->
             <div id="planStockInputsContainer" class="stock-qty-box" style="display:none;"></div>
+
+            <!-- 需求1：动态渲染选定食物的配菜选择区 -->
+            <div id="planSideDishContainer" class="side-dish-box" style="display:none;"></div>
 
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" id="btnCancelPlan">取消</button>
@@ -421,13 +435,13 @@
                 { id: 1, name: "胡萝卜猪肝泥", category: "肉", ingredients: "猪肝 20g, 胡萝卜 30g", steps: "1. 猪肝蒸熟\n2. 胡萝卜蒸软打泥", stock: 5 },
                 { id: 2, name: "西兰花三文鱼粥", category: "主食", ingredients: "三文鱼 25g, 西兰花 15g", steps: "1. 胚芽米煮成粥\n2. 鱼和菜切碎放入", stock: 3 }
             ];
-            // datePlans 数据结构支持存储对象项：{ recipeId: 1, usedQty: 2 } 或旧格式纯 rId
+            // datePlans 数据结构支持存储对象项：{ recipeId: 1, usedQty: 2, sideDishes: ["西兰花", "南瓜"] } 或旧格式
             var datePlans = {};
             var vaccineList = [];
             var summaries = [];
 
-            // 临时记录排餐弹窗中已选食谱及其消耗量
-            var currentModalPlanItems = []; // [{ recipeId: number, usedQty: number|null }]
+            // 临时记录排餐弹窗中已选食谱及其消耗量和配菜
+            var currentModalPlanItems = []; // [{ recipeId: number, usedQty: number|null, sideDishes: array }]
 
             function getFormattedDate(dateObj) {
                 var y = dateObj.getFullYear();
@@ -526,7 +540,7 @@
                         recipes = cData.recipes || [];
                         datePlans = cData.datePlans || {};
                         
-                        // 兼容与清洗 datePlans 结构，统一转成对象数组 [{ recipeId, usedQty }]
+                        // 兼容与清洗 datePlans 结构，统一转成对象数组 [{ recipeId, usedQty, sideDishes }]
                         Object.keys(datePlans).forEach(function(d) {
                             Object.keys(datePlans[d]).forEach(function(m) {
                                 if (!Array.isArray(datePlans[d][m])) {
@@ -534,9 +548,13 @@
                                 }
                                 datePlans[d][m] = datePlans[d][m].map(item => {
                                     if (typeof item === 'number') {
-                                        return { recipeId: item, usedQty: null };
+                                        return { recipeId: item, usedQty: null, sideDishes: [] };
                                     }
-                                    return item;
+                                    return {
+                                        recipeId: item.recipeId,
+                                        usedQty: item.usedQty !== undefined ? item.usedQty : null,
+                                        sideDishes: Array.isArray(item.sideDishes) ? item.sideDishes : []
+                                    };
                                 });
                             });
                         });
@@ -594,7 +612,7 @@
             // 📊 导出 CSV
             document.getElementById('btnExportCSV').addEventListener('click', function() {
                 var csvRows = [];
-                csvRows.push(['记录类型', '日期/分类', '餐次/新食材', '食谱/内容', '食材用量', '消耗/存量/步骤'].map(escapeCSV).join(','));
+                csvRows.push(['记录类型', '日期/分类', '餐次/新食材', '食谱/内容', '食材用量', '消耗/存量/配菜'].map(escapeCSV).join(','));
 
                 Object.keys(datePlans).forEach(function(dStr) {
                     var dayPlan = datePlans[dStr];
@@ -605,7 +623,8 @@
                                 var recipe = recipes.find(function(r) { return r.id === pItem.recipeId; });
                                 if (recipe) {
                                     var usedStr = (pItem.usedQty !== null && pItem.usedQty !== undefined) ? ('消耗:' + pItem.usedQty + '份') : '-';
-                                    csvRows.push(['排餐计划', dStr, meal, recipe.name, recipe.ingredients, usedStr].map(escapeCSV).join(','));
+                                    var sideStr = (pItem.sideDishes && pItem.sideDishes.length > 0) ? ('配菜:' + pItem.sideDishes.join('+')) : '';
+                                    csvRows.push(['排餐计划', dStr, meal, recipe.name, recipe.ingredients, usedStr + ' ' + sideStr].map(escapeCSV).join(','));
                                 }
                             });
                         }
@@ -690,9 +709,14 @@
                             var uMatch = col5.match(/消耗:(\d+)份/);
                             if (uMatch) usedQty = parseInt(uMatch[1]);
                         }
+                        var sideDishesArr = [];
+                        if (col5.includes('配菜:')) {
+                            var sMatch = col5.match(/配菜:([^\s]+)/);
+                            if (sMatch) sideDishesArr = sMatch[1].split('+');
+                        }
                         if (!newDatePlans[dStr]) newDatePlans[dStr] = {};
                         if (!newDatePlans[dStr][meal]) newDatePlans[dStr][meal] = [];
-                        newDatePlans[dStr][meal].push({ recipeId: rId, usedQty: usedQty });
+                        newDatePlans[dStr][meal].push({ recipeId: rId, usedQty: usedQty, sideDishes: sideDishesArr });
                     }
                 }
 
@@ -750,9 +774,13 @@
                                     }
                                     datePlans[d][m] = datePlans[d][m].map(item => {
                                         if (typeof item === 'number') {
-                                            return { recipeId: item, usedQty: null };
+                                            return { recipeId: item, usedQty: null, sideDishes: [] };
                                         }
-                                        return item;
+                                        return {
+                                            recipeId: item.recipeId,
+                                            usedQty: item.usedQty !== undefined ? item.usedQty : null,
+                                            sideDishes: Array.isArray(item.sideDishes) ? item.sideDishes : []
+                                        };
                                     });
                                 });
                             });
@@ -798,7 +826,7 @@
             document.getElementById('btnCancelPlan').addEventListener('click', function() { document.getElementById('planModal').classList.remove('active'); });
             document.getElementById('btnCancelVaccine').addEventListener('click', function() { document.getElementById('vaccineModal').classList.remove('active'); });
 
-            // 📖 关闭食谱详情弹窗 (新增需求 2)
+            // 关闭食谱详情弹窗
             document.getElementById('btnCloseRecipeDetail').addEventListener('click', function() {
                 document.getElementById('recipeDetailModal').classList.remove('active');
             });
@@ -870,12 +898,11 @@
                 }
             });
 
-            // 💡 渲染久未食用智能提醒面板 (方案 C)
+            // 💡 渲染久未食用智能提醒面板
             function renderNotEatenBanner() {
                 var container = document.getElementById('notEatenArea');
                 container.innerHTML = '';
 
-                // 筛选肉、主食、蔬菜类食材，找出 > 7天 或 未吃过 的食物
                 var targetCategories = ['肉', '主食', '蔬菜'];
                 var longTimeRecipes = [];
 
@@ -890,7 +917,6 @@
 
                 if (longTimeRecipes.length === 0) return;
 
-                // 优先展示最久没吃的 4 种
                 longTimeRecipes.sort((a, b) => b.info.days - a.info.days);
                 var displayList = longTimeRecipes.slice(0, 4);
 
@@ -911,22 +937,22 @@
                 html += '</div></div>';
                 container.innerHTML = html;
 
-                // 绑定点击快速加入排餐
                 container.querySelectorAll('.not-eaten-pill').forEach(pill => {
                     pill.addEventListener('click', function() {
                         var rId = parseInt(this.getAttribute('data-id'));
                         openPlanModal(currentSelectedDate, "早餐");
                         if (!currentModalPlanItems.some(i => i.recipeId === rId)) {
-                            currentModalPlanItems.push({ recipeId: rId, usedQty: null });
+                            currentModalPlanItems.push({ recipeId: rId, usedQty: null, sideDishes: [] });
                         }
                         updatePlanRecipeOptions();
                         renderModalStockInputs();
+                        renderModalSideDishInputs();
                     });
                 });
             }
 
             function renderDailyMeal() {
-                renderNotEatenBanner(); // 渲染久未食用面板
+                renderNotEatenBanner();
 
                 var container = document.getElementById('dailyMealContent'); container.innerHTML = '';
                 var vBannerArea = document.getElementById('vaccineBannerArea');
@@ -1036,6 +1062,12 @@
                                     `;
                                 }
 
+                                // 需求1：配菜纯文字展示
+                                var sideDishHtml = '';
+                                if (pItem.sideDishes && pItem.sideDishes.length > 0) {
+                                    sideDishHtml = `<div style="font-size:12px; color:#15803D; background:#F0FDF4; padding:4px 8px; border-radius:6px; margin-top:6px; display:inline-block;">🥗 配菜：<b>${pItem.sideDishes.join('、')}</b></div>`;
+                                }
+
                                 card.innerHTML = `
                                     <div class="card-header">
                                         <div class="card-title">${recipe.name} <span style="font-size:11px; font-weight:normal; color:#888;">(点击看做法)</span></div>
@@ -1045,15 +1077,14 @@
                                         </div>
                                     </div>
                                     <div class="ingredients-tag">${recipe.ingredients.split(',').map(i => '<span class="tag">' + i.trim() + '</span>').join('')}</div>
+                                    ${sideDishHtml}
                                     ${stockInfoHtml}
                                 `;
 
-                                // 📖 需求 2 核心点：点击卡片查看制作方法弹窗
                                 card.addEventListener('click', function() {
                                     openRecipeDetailModal(recipe);
                                 });
 
-                                // 如果有修改消耗量功能，绑定更新逻辑（阻止冒泡以免触发弹窗）
                                 if (isTargetCategory) {
                                     var saveBtn = card.querySelector('.btn-save-qty');
                                     var qtyInput = card.querySelector('.plan-used-input');
@@ -1066,14 +1097,14 @@
                                         }
                                         var newQty = parseInt(newQtyVal);
                                         var oldQty = pItem.usedQty || 0;
-                                        var diff = newQty - oldQty; // 增加的消耗量
+                                        var diff = newQty - oldQty;
 
                                         if (recipe.stock !== null && recipe.stock !== undefined) {
                                             if (recipe.stock - diff < 0) {
                                                 alert(`⚠️ 库存不足！当前库存 ${recipe.stock} 份，无法修改消耗为 ${newQty} 份。`);
                                                 return;
                                             }
-                                            recipe.stock -= diff; // 相应调整库存
+                                            recipe.stock -= diff;
                                         }
 
                                         pItem.usedQty = newQty;
@@ -1087,8 +1118,7 @@
                                 removeBtn.className = 'btn btn-sm btn-secondary'; removeBtn.style.marginTop = '10px'; removeBtn.style.color = '#ff4d4f'; removeBtn.innerText = '移除此食物';
                                 (function(targetIdx, targetRecipe, targetItem) {
                                     removeBtn.addEventListener('click', function(e) {
-                                        e.stopPropagation(); // 阻止冒泡
-                                        // 移除食物时，还原已消耗库存
+                                        e.stopPropagation();
                                         if (targetRecipe && (targetRecipe.category === '肉' || targetRecipe.category === '主食')) {
                                             if (targetItem.usedQty && targetRecipe.stock !== null && targetRecipe.stock !== undefined) {
                                                 targetRecipe.stock += targetItem.usedQty;
@@ -1116,7 +1146,6 @@
                 });
             }
 
-            // 📖 需求 2：弹窗展示食谱制作方法
             function openRecipeDetailModal(recipe) {
                 document.getElementById('detailRecipeName').innerText = "📖 " + recipe.name;
                 
@@ -1235,23 +1264,31 @@
                 document.getElementById('planDateSelect').value = dateStr;
                 document.getElementById('planMealSelect').value = meal;
                 document.getElementById('planCategoryFilter').value = '全部分类';
+                document.getElementById('planSearchInput').value = ''; // 重置搜索词
                 
                 var existingItems = (datePlans[dateStr] && datePlans[dateStr][meal]) ? datePlans[dateStr][meal] : [];
-                // 深度复制一份当前排餐项
-                currentModalPlanItems = existingItems.map(item => ({ recipeId: item.recipeId, usedQty: item.usedQty }));
+                currentModalPlanItems = existingItems.map(item => ({
+                    recipeId: item.recipeId,
+                    usedQty: item.usedQty,
+                    sideDishes: Array.isArray(item.sideDishes) ? [...item.sideDishes] : []
+                }));
                 
                 updatePlanRecipeOptions();
                 renderModalStockInputs();
+                renderModalSideDishInputs();
                 document.getElementById('planModal').classList.add('active');
             }
 
-            // 动态更新排餐弹窗里的食谱列表（带有方案 A 最近食用时间提示）
+            // 需求2：同时根据“分类筛选”与“关键字搜索”动态更新排餐列表
             function updatePlanRecipeOptions() {
                 var categoryFilter = document.getElementById('planCategoryFilter').value;
+                var keyword = document.getElementById('planSearchInput').value.trim().toLowerCase();
                 var recipeSel = document.getElementById('planRecipeSelect');
                 
                 var filteredRecipes = recipes.filter(r => {
-                    return (categoryFilter === '全部分类') || (r.category === categoryFilter);
+                    var matchCat = (categoryFilter === '全部分类') || (r.category === categoryFilter);
+                    var matchKeyword = !keyword || r.name.toLowerCase().includes(keyword) || (r.ingredients && r.ingredients.toLowerCase().includes(keyword));
+                    return matchCat && matchKeyword;
                 });
 
                 var selectedRecipeIds = currentModalPlanItems.map(i => i.recipeId);
@@ -1259,8 +1296,6 @@
                 recipeSel.innerHTML = filteredRecipes.map(r => {
                     var isSelected = selectedRecipeIds.includes(r.id) ? 'selected' : '';
                     var stockInfo = (r.category === '肉' || r.category === '主食') ? (r.stock !== null && r.stock !== undefined ? ` [存: ${r.stock}份]` : '') : '';
-                    
-                    // 💡 方案 A 核心：获取最近一次食用时间
                     var eatenInfo = getEatenTimeInfo(r.id);
                     var eatenStr = ` [上次吃: ${eatenInfo.text}]`;
 
@@ -1273,7 +1308,6 @@
                 var container = document.getElementById('planStockInputsContainer');
                 container.innerHTML = '';
 
-                // 筛选出选中的肉/主食食谱
                 var targetItems = currentModalPlanItems.map(item => {
                     var r = recipes.find(rec => rec.id === item.recipeId);
                     return { planItem: item, recipe: r };
@@ -1308,7 +1342,6 @@
                     container.appendChild(row);
                 });
 
-                // 绑定输入框修改事件
                 container.querySelectorAll('.modal-used-qty-input').forEach(input => {
                     input.addEventListener('input', function() {
                         var rId = parseInt(this.getAttribute('data-id'));
@@ -1321,17 +1354,93 @@
                 });
             }
 
-            // 监听分类筛选切换
+            // 需求1：渲染排餐弹窗中的配菜选择区域
+            function renderModalSideDishInputs() {
+                var container = document.getElementById('planSideDishContainer');
+                container.innerHTML = '';
+
+                if (currentModalPlanItems.length === 0) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                // 筛选出所有“蔬菜”分类下的食谱作为可选配菜
+                var vegRecipes = recipes.filter(r => r.category === '蔬菜');
+
+                container.style.display = 'block';
+                var headerTitle = document.createElement('div');
+                headerTitle.style.cssText = 'font-weight:bold; font-size:12px; margin-bottom:8px; color:#166534;';
+                headerTitle.innerText = '🥗 搭配蔬菜配菜（基于各食物独立搭配）：';
+                container.appendChild(headerTitle);
+
+                currentModalPlanItems.forEach(item => {
+                    var r = recipes.find(rec => rec.id === item.recipeId);
+                    if (!r) return;
+
+                    var row = document.createElement('div');
+                    row.className = 'side-dish-item-row';
+
+                    var titleSpan = document.createElement('div');
+                    titleSpan.style.cssText = 'font-size:12px; font-weight:600; color:#15803D;';
+                    titleSpan.innerText = '👉 为【' + r.name + '】选择配菜：';
+                    row.appendChild(titleSpan);
+
+                    // 关键字过滤配菜框
+                    var searchInp = document.createElement('input');
+                    searchInp.type = 'text';
+                    searchInp.placeholder = '🔍 搜索蔬菜配菜...';
+                    searchInp.style.cssText = 'padding:4px 8px; font-size:12px; border:1px solid #86EFAC; border-radius:6px; outline:none;';
+
+                    // 多选框
+                    var selectEl = document.createElement('select');
+                    selectEl.multiple = true;
+                    selectEl.style.cssText = 'height:70px; font-size:12px; border:1px solid #86EFAC; border-radius:6px; padding:4px;';
+
+                    function populateSideOptions() {
+                        var kw = searchInp.value.trim().toLowerCase();
+                        var filteredVeg = vegRecipes.filter(v => !kw || v.name.toLowerCase().includes(kw));
+
+                        selectEl.innerHTML = filteredVeg.map(v => {
+                            var isSel = (item.sideDishes && item.sideDishes.includes(v.name)) ? 'selected' : '';
+                            return `<option value="${v.name}" ${isSel}>${v.name}</option>`;
+                        }).join('');
+                    }
+
+                    populateSideOptions();
+
+                    searchInp.addEventListener('input', populateSideOptions);
+
+                    selectEl.addEventListener('change', function() {
+                        var selectedSideNames = Array.from(selectEl.options).filter(opt => opt.selected).map(opt => opt.value);
+                        item.sideDishes = selectedSideNames;
+                    });
+
+                    row.appendChild(searchInp);
+                    row.appendChild(selectEl);
+                    container.appendChild(row);
+                });
+            }
+
+            // 需求2：监听分类筛选 & 关键字搜索框
             document.getElementById('planCategoryFilter').addEventListener('change', function() {
                 syncCurrentModalSelectedRecipes();
                 updatePlanRecipeOptions();
                 renderModalStockInputs();
+                renderModalSideDishInputs();
+            });
+
+            document.getElementById('planSearchInput').addEventListener('input', function() {
+                syncCurrentModalSelectedRecipes();
+                updatePlanRecipeOptions();
+                renderModalStockInputs();
+                renderModalSideDishInputs();
             });
 
             // 监听多选框的手动选择变化
             document.getElementById('planRecipeSelect').addEventListener('change', function() {
                 syncCurrentModalSelectedRecipes();
                 renderModalStockInputs();
+                renderModalSideDishInputs();
             });
 
             function syncCurrentModalSelectedRecipes() {
@@ -1343,7 +1452,7 @@
                     var rId = parseInt(opt.value);
                     if (opt.selected) {
                         if (!currentSelectedIds.includes(rId)) {
-                            currentModalPlanItems.push({ recipeId: rId, usedQty: null });
+                            currentModalPlanItems.push({ recipeId: rId, usedQty: null, sideDishes: [] });
                         }
                     } else {
                         var idx = currentModalPlanItems.findIndex(i => i.recipeId === rId);
@@ -1360,7 +1469,7 @@
                 var dateStr = document.getElementById('planDateSelect').value;
                 var meal = document.getElementById('planMealSelect').value;
 
-                // 校验：对于肉、主食，校验消耗数量是否已填，以及是否超过库存
+                // 校验：针对肉和主食校验消耗量
                 for (var i = 0; i < currentModalPlanItems.length; i++) {
                     var item = currentModalPlanItems[i];
                     var recipe = recipes.find(r => r.id === item.recipeId);
@@ -1383,13 +1492,13 @@
                     }
                 }
 
-                // 先恢复旧列表中肉/主食扣掉的库存，重新计算库存扣减
+                // 还原旧列表中肉/主食扣掉的库存
                 var oldItems = (datePlans[dateStr] && datePlans[dateStr][meal]) ? datePlans[dateStr][meal] : [];
                 oldItems.forEach(oldItem => {
                     var r = recipes.find(rec => rec.id === oldItem.recipeId);
                     if (r && (r.category === '肉' || r.category === '主食')) {
                         if (oldItem.usedQty && r.stock !== null && r.stock !== undefined) {
-                            r.stock += oldItem.usedQty; // 归还旧库存
+                            r.stock += oldItem.usedQty;
                         }
                     }
                 });
@@ -1399,7 +1508,7 @@
                     var r = recipes.find(rec => rec.id === newItem.recipeId);
                     if (r && (r.category === '肉' || r.category === '主食')) {
                         if (newItem.usedQty && r.stock !== null && r.stock !== undefined) {
-                            r.stock -= newItem.usedQty; // 扣减库存
+                            r.stock -= newItem.usedQty;
                         }
                     }
                 });
@@ -1407,7 +1516,11 @@
                 if (!datePlans[dateStr]) datePlans[dateStr] = {};
                 
                 if (currentModalPlanItems.length > 0) {
-                    datePlans[dateStr][meal] = currentModalPlanItems.map(item => ({ recipeId: item.recipeId, usedQty: item.usedQty }));
+                    datePlans[dateStr][meal] = currentModalPlanItems.map(item => ({
+                        recipeId: item.recipeId,
+                        usedQty: item.usedQty,
+                        sideDishes: item.sideDishes || []
+                    }));
                 } else {
                     delete datePlans[dateStr][meal];
                 }
@@ -1418,7 +1531,7 @@
                 renderRecipes();
             });
 
-            // 监听编辑食谱时分类切换，控制库存输入框显隐
+            // 监听编辑食谱时分类切换
             document.getElementById('recipeCategory').addEventListener('change', function() {
                 var cat = this.value;
                 var stockGrp = document.getElementById('stockGroup');
@@ -1453,7 +1566,7 @@
                 document.getElementById('recipeModal').classList.add('active');
             }
 
-            // 渲染食谱灵感列表（带有方案 B 标签展示）
+            // 渲染食谱灵感列表
             function renderRecipes() {
                 var query = document.getElementById('searchInput').value.toLowerCase();
                 var selectedCat = document.getElementById('categoryFilter').value;
@@ -1477,7 +1590,6 @@
                             }
                         }
 
-                        // 💡 方案 B 核心：渲染食谱卡片右上角的最近食用标签
                         var eatenInfo = getEatenTimeInfo(r.id);
                         var eatenBadgeHtml = `<span class="badge-time">🕒 ${eatenInfo.text}</span>`;
 
@@ -1486,7 +1598,6 @@
                                          '<div class="ingredients-tag">' + r.ingredients.split(',').map(i => '<span class="tag">🥦 ' + i.trim() + '</span>').join('') + '</div>' +
                                          stepsHtml;
 
-                        // 绑定折叠/展开事件
                         if (r.steps) {
                             var toggleBtn = card.querySelector('.steps-toggle-btn');
                             var stepsContent = card.querySelector('.steps-text');
@@ -1503,10 +1614,11 @@
                         planBtn.addEventListener('click', function() { 
                             openPlanModal(currentSelectedDate, "早餐"); 
                             if (!currentModalPlanItems.some(i => i.recipeId === r.id)) {
-                                currentModalPlanItems.push({ recipeId: r.id, usedQty: null });
+                                currentModalPlanItems.push({ recipeId: r.id, usedQty: null, sideDishes: [] });
                             }
                             updatePlanRecipeOptions();
                             renderModalStockInputs();
+                            renderModalSideDishInputs();
                         });
 
                         var editBtn = document.createElement('button'); editBtn.className = 'btn btn-sm btn-outline'; editBtn.innerText = '✏️ 编辑';
